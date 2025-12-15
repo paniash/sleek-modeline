@@ -1,4 +1,4 @@
-;;; sleek-modeline.el --- TODO -*- lexical-binding: t; -*-
+;;; sleek-modeline.el --- Minimal and elegant modeline -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2025 Abidán Brito Clavijo
 
@@ -11,15 +11,18 @@
 
 ;;; Commentary:
 
-;; TODO(abi): this package provides a ...
+;; This package provides a minimal and elegant modeline replacement.
 
 ;;; Code:
 
+(require 'sleek-modeline-helpers)
+
 (defvar sleek-modeline-format
   '("%e"
-    (:eval (buffer-name))
-    "  "
-    (:eval (symbol-name major-mode)))
+    " "
+    (:eval (sleek-modeline-buffer-name))
+    " | "
+    (:eval (sleek-modeline-major-mode)))
   "The sleek mode-line format.")
 
 (defvar sleek-modeline--default-mode-line mode-line-format
@@ -27,7 +30,7 @@
 
 ;;;###autoload
 (define-minor-mode sleek-modeline-mode
-  "Toggle sleek mode-line on or off."
+  "Toggle sleek modeline on and off."
   :global t
   :group 'sleek-modeline
   (if sleek-modeline-mode
