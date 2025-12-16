@@ -34,13 +34,12 @@ Changes color when buffer is modified."
                           file-name
                           (featurep 'nerd-icons))
                  (nerd-icons-icon-for-file file-name)))
-         (buffer-name (file-name-sans-extension
-                       (substring-no-properties (format-mode-line "%b"))))
-         ;; Use modified face if buffer has unsaved changes
-         (face (if (and sleek-modeline-highlight-modified-buffer-name
-                        (buffer-modified-p))
-                   'sleek-modeline-buffer-name-modified-face
-                 'sleek-modeline-buffer-name-face)))
+         (buffer-name (substring-no-properties (format-mode-line "%b")))
+	 ;; Use modified face if buffer has unsaved changes
+	 (face (if (and sleek-modeline-highlight-modified-buffer-name
+			(buffer-modified-p))
+		   'sleek-modeline-buffer-name-modified-face
+		 'sleek-modeline-buffer-name-face)))
     (if icon
         (concat icon " " (propertize buffer-name 'face face))
       (propertize buffer-name 'face face))))
