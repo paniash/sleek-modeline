@@ -20,8 +20,9 @@
 (defvar sleek-modeline-format
   '("%e"
     " "
+    (:eval (sleek-modeline-modal-state-marker))
     (:eval (sleek-modeline-buffer-name))
-    " | "
+    " "
     (:eval (sleek-modeline-major-mode)))
   "The sleek mode-line format.")
 
