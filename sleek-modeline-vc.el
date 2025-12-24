@@ -12,7 +12,7 @@
 
 (require 'vc)
 (require 'vc-git)
-(require 'sleek-modeline-faces)
+(require 'sleek-modeline-core)
 
 ;; NOTE(abi): optional dependency; only gets loaded if available.
 (declare-function nerd-icons-octicon "nerd-icons")
