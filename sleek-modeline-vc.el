@@ -11,7 +11,6 @@
 ;;; Code:
 
 (require 'vc)
-(require 'vc-git)
 (require 'sleek-modeline-core)
 
 ;; NOTE(abi): optional dependency; only gets loaded if available.
@@ -43,17 +42,12 @@ Returns empty string if icons are disabled or nerd-icons is not available."
 (defun sleek-modeline-vc--branch-name ()
   "Get the current branch name from `vc-mode'.
 Returns nil if not in a version-controlled file."
-  (when (and vc-mode buffer-file-name)
-    (let* ((backend (vc-backend buffer-file-name))
-           (branch (when backend
-                     (substring-no-properties
-                      (or (pcase backend
-                            ('Git (substring vc-mode 5))
-                            ('Hg (substring vc-mode 4))
-                            (_ vc-mode))
-                          "")))))
-      (when (and branch (not (string-empty-p branch)))
-        (replace-regexp-in-string "^Git[:-]" "" branch)))))
+  (when (and vc-mode (stringp vc-mode) buffer-file-name)
+    (when (string-match "^ [A-Za-z]+[:-]\\(.*\\)" vc-mode)
+      (let ((branch (string-trim (substring-no-properties (match-string 1 vc-mode)))))
+        (unless (string-empty-p branch)
+          branch)))))
+
 
 (defun sleek-modeline-vc--state-face ()
   "Return the appropriate face based on VC state.
@@ -70,15 +64,16 @@ Uses different faces for modified, conflict, and clean states."
 
 (defun sleek-modeline-vc ()
   "Show version control information with icon and branch name.
-Returns empty string if not in a version-controlled file."
-  (when-let ((branch (sleek-modeline-vc--branch-name)))
-    (let ((icon (sleek-modeline-vc--branch-icon))
-          (face (sleek-modeline-vc--state-face)))
-      (concat
-       (when icon
-         (concat (propertize icon 'face face) " "))
-       (propertize branch 'face face)))))
+Returns nil if not in a version-controlled file or if an error occurs."
+  (condition-case nil
+      (when-let ((branch (sleek-modeline-vc--branch-name)))
+        (let ((icon (sleek-modeline-vc--branch-icon))
+              (face (sleek-modeline-vc--state-face)))
+          (concat
+           (when icon
+             (concat (propertize icon 'face face) " "))
+           (propertize branch 'face face))))
+    (error nil)))
 
 (provide 'sleek-modeline-vc)
-
 ;;; sleek-modeline-vc.el ends here
