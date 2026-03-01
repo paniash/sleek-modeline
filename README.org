@@ -95,13 +95,13 @@ All options live under =M-x customize-group RET sleek-modeline=. Here are the ma
 
 ** Diagnostics
 
-| Variable                                  | Default | Description                            |   |   |   |
-|-------------------------------------------+---------+----------------------------------------+---+---+---|
-| =sleek-modeline-diagnostics-show-info=      | =t=       | Show info-level diagnostics.           |   |   |   |
-| =sleek-modeline-diagnostics-error-symbol=   | ="✕"=     | Symbol for errors.                     |   |   |   |
-| =sleek-modeline-diagnostics-warning-symbol= | ="▲"=     | Symbol for warnings.                   |   |   |   |
-| =sleek-modeline-diagnostics-info-symbol=    | ="●"=     | Symbol for info notes.                 |   |   |   |
-| =sleek-modeline-diagnostics-ok-symbol=      | =nil=     | Symbol shown when the buffer is clean. |   |   |   |
+| Variable                                    | Default   | Description                            |
+|---------------------------------------------+-----------+----------------------------------------|
+| =sleek-modeline-diagnostics-show-info=      | =t=       | Show info-level diagnostics.           |
+| =sleek-modeline-diagnostics-error-symbol=   | ="✕"=     | Symbol for errors.                     |
+| =sleek-modeline-diagnostics-warning-symbol= | ="▲"=     | Symbol for warnings.                   |
+| =sleek-modeline-diagnostics-info-symbol=    | ="●"=     | Symbol for info notes.                 |
+| =sleek-modeline-diagnostics-ok-symbol=      | =nil=     | Symbol shown when the buffer is clean. |
 
 ** Example configuration
 
