@@ -222,21 +222,21 @@ Returns the box line-width value to use for the mode-line."
   "Update mode-line face attributes based on current height settings.
 Derives mode-line backgrounds by darkening the current `default' face,
 ensuring the modeline is always visually distinct from buffer content."
-  (let* ((height (sleek-modeline--get-height))
+  (let* ((modeline-height (sleek-modeline--get-height))
 	 (default-background (or sleek-modeline-background
-				 (face-background 'default (selected-window) t)
-				 "black"))
+                                 (face-background 'default)
+                                 "black"))
 	 (modeline-background (sleek-modeline--darken default-background 0.20))
 	 (modeline-inactive-background (sleek-modeline--darken default-background 0.15)))
     (when (facep 'mode-line)
       (set-face-attribute 'mode-line nil
 			  :background modeline-background
-                          :box `(:line-width ,height :color ,modeline-background)
+                          :box `(:line-width ,modeline-height :color ,modeline-background)
                           :underline nil))
     (when (facep 'mode-line-inactive)
       (set-face-attribute 'mode-line-inactive nil
 			  :background modeline-inactive-background
-                          :box `(:line-width ,height :color ,modeline-inactive-background)
+                          :box `(:line-width ,modeline-height :color ,modeline-inactive-background)
                           :underline nil))
     (sleek-modeline--update-separator-face)
     (force-mode-line-update t)))
