@@ -93,6 +93,13 @@ When non-nil, modified buffers will use
   "Face for major mode in `sleek-modeline'."
   :group 'sleek-modeline-faces)
 
+(defcustom sleek-modeline-background nil
+  "Custom background for the mode-line.
+If nil, derives from `default` face."
+  :type '(choice (const :tag "Derive from default" nil)
+                 color)
+  :group 'sleek-modeline)
+
 (defface sleek-modeline-modal-normal-face
   '((t (:weight bold :foreground "#1e1e2e" :background "#89b4fa")))
   "Face for normal modal state." :group 'sleek-modeline-faces)
@@ -212,24 +219,25 @@ Returns the box line-width value to use for the mode-line."
         ('large 10))))
 
 (defun sleek-modeline--update-faces ()
-  "Update mode-line face attributes based on current height settings."
-  (let ((height (sleek-modeline--get-height)))
+  "Update mode-line face attributes based on current height settings.
+Derives mode-line backgrounds by darkening the current `default' face,
+ensuring the modeline is always visually distinct from buffer content."
+  (let* ((modeline-height (sleek-modeline--get-height))
+	 (default-background (or sleek-modeline-background
+                                 (face-background 'default)
+                                 "black"))
+	 (modeline-background (sleek-modeline--darken default-background 0.20))
+	 (modeline-inactive-background (sleek-modeline--darken default-background 0.15)))
     (when (facep 'mode-line)
-      (let ((bg (or (face-background 'mode-line nil t)
-                    (face-background 'default nil t)
-                    "black")))
-        (set-face-attribute 'mode-line nil
-                            :box `(:line-width ,height :color ,bg)
-                            :underline nil)))
+      (set-face-attribute 'mode-line nil
+			  :background modeline-background
+                          :box `(:line-width ,modeline-height :color ,modeline-background)
+                          :underline nil))
     (when (facep 'mode-line-inactive)
-      (let ((bg (or (face-background 'mode-line-inactive nil t)
-                    (face-background 'mode-line nil t)
-                    (face-background 'default nil t)
-                    "black")))
-        (set-face-attribute 'mode-line-inactive nil
-                            :box `(:line-width ,height :color ,bg)
-                            :underline nil)))
-
+      (set-face-attribute 'mode-line-inactive nil
+			  :background modeline-inactive-background
+                          :box `(:line-width ,modeline-height :color ,modeline-inactive-background)
+                          :underline nil))
     (sleek-modeline--update-separator-face)
     (force-mode-line-update t)))
 
@@ -253,13 +261,16 @@ Returns the box line-width value to use for the mode-line."
   "Return the propertized segment separator."
   (propertize sleek-modeline-separator 'face 'sleek-modeline-separator-face))
 
-
 (defun sleek-modeline--blend-colors (c1 c2 alpha)
   "Blend C1 toward C2 by ALPHA (0.0 = C2, 1.0 = C1)."
   (apply #'color-rgb-to-hex
          (cl-mapcar (lambda (a b) (+ (* alpha a) (* (- 1.0 alpha) b)))
                     (color-name-to-rgb c1)
                     (color-name-to-rgb c2))))
+
+(defun sleek-modeline--darken (color amount)
+  "Darken COLOR by AMOUNT (0.0 = unchanged, 1.0 = black)."
+  (sleek-modeline--blend-colors color "#000000" (- 1.0 amount)))
 
 (defun sleek-modeline--update-separator-face ()
   "Set separator face to a dimmed version of the shadow face foreground."

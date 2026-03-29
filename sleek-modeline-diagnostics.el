@@ -13,12 +13,21 @@
 
 (require 'sleek-modeline-core)
 
-;; NOTE(abi): optional dependencies; only loaded if available.
-(declare-function flycheck-count-errors "flycheck")
-(defvar flycheck-mode)
-(defvar flycheck-current-errors)
+;; Optional dependencies, declared to silence the byte-compiler
+;; NOTE(abi): these get loaded only if available.
+(eval-when-compile
+  (declare-function flycheck-count-errors "flycheck")
+  (declare-function nerd-icons-codicon "nerd-icons")
+  (defvar flycheck-mode)
+  (defvar flycheck-current-errors))
 
-(declare-function nerd-icons-codicon "nerd-icons")
+(defvar sleek-modeline-diagnostics--enabled nil
+  "Non-nil means diagnostics integration with Flycheck is enabled globally.
+Used as a sentinel to ensure hooks are only installed once.")
+
+(defvar-local sleek-modeline-diagnostics--cache nil
+  "Cached propertized string for the diagnostics segment.
+Nil means the cache is empty (no checker result yet).")
 
 (defcustom sleek-modeline-diagnostics-show-info t
   "Whether to show info-level diagnostics in the mode-line."
@@ -66,10 +75,6 @@ When nil, nothing is shown for a clean buffer."
   '((t (:inherit font-lock-comment-face)))
   "Face used when there are no diagnostics."
   :group 'sleek-modeline-faces)
-
-(defvar-local sleek-modeline-diagnostics--cache nil
-  "Cached propertized string for the diagnostics segment.
-Nil means the cache is empty (no checker result yet).")
 
 (defun sleek-modeline-diagnostics--icon (nerd-icon fallback)
   "Return a diagnostic icon string.
@@ -149,14 +154,31 @@ The value is read from a hook-driven cache - no work is done on redraw."
   sleek-modeline-diagnostics--cache)
 
 ;;;###autoload
-(defun sleek-modeline-diagnostics-setup ()
+(defun sleek-modeline-diagnostics-enable ()
   "Enable diagnostics segment wiring.
-Call this once, e.g. inside `sleek-modeline-mode' activation or in
-`after-init-hook'.  Attaches to flycheck/flymake mode hooks so each
-buffer is integrated automatically when a checker activates."
-  (with-eval-after-load 'flycheck
-    (add-hook 'flycheck-mode-hook
-              #'sleek-modeline-diagnostics--flycheck-mode-hook)))
+Attaches to Flycheck/Flymake mode hooks so that diagnostics tracking
+is integrated automatically in buffers where a checker activates.
+Call this once inside `sleek-modeline-mode' activation."
+  (unless sleek-modeline-diagnostics--enabled
+    (setq sleek-modeline-diagnostics--enabled t)
+    (when (featurep 'flycheck)
+      (add-hook 'flycheck-mode-hook
+		#'sleek-modeline-diagnostics--flycheck-mode-hook))))
+
+(defun sleek-modeline-diagnostics-disable ()
+  "Disable diagnostics segment integration.
+Removes the global Flycheck/Flymake hooks and tears down diagnostics
+tracking in all existing buffers where it was active.
+This ensures no buffer-local hooks or cached state remain."
+  (when sleek-modeline-diagnostics--enabled
+    (setq sleek-modeline-diagnostics--enabled nil)
+    (when (featurep 'flycheck)
+      (remove-hook 'flycheck-mode-hook
+                   #'sleek-modeline-diagnostics--flycheck-mode-hook))
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf
+	(when (bound-and-true-p flycheck-mode)
+          (sleek-modeline-diagnostics--flycheck-teardown))))))
 
 (provide 'sleek-modeline-diagnostics)
 ;;; sleek-modeline-diagnostics.el ends here

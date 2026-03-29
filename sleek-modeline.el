@@ -17,11 +17,30 @@
 
 (require 'sleek-modeline-core)
 (require 'sleek-modeline-vc)
-(require 'sleek-modeline-diagnostics)
+
+;; Declare diagnostics functions to quiet the byte-compiler
+(declare-function sleek-modeline-diagnostics-enable "sleek-modeline-diagnostics")
+(declare-function sleek-modeline-diagnostics-disable "sleek-modeline-diagnostics")
+
+(defcustom sleek-modeline-enable-diagnostics t
+  "Enable diagnostics segment integration in sleek-modeline."
+  :type 'boolean
+  :group 'sleek-modeline)
+
+(defcustom sleek-modeline-edge-padding 2
+  "Number of spaces at the left and right edges of the mode-line."
+  :type 'integer
+  :group 'sleek-modeline)
+
+(defvar sleek-modeline--saved-modeline-attrs nil
+  "Saved `mode-line' face attributes before sleek-modeline modified them.")
+
+(defvar sleek-modeline--saved-modeline-inactive-attrs nil
+  "Saved `mode-line-inactive' face attributes before sleek-modeline modified them.")
 
 (defvar sleek-modeline-format
   '("%e"
-    " "
+    (:eval (make-string sleek-modeline-edge-padding ?\s))
     (:eval (when-let ((marker (sleek-modeline-modal-state-marker)))
              (concat marker " ")))
     (:eval (sleek-modeline-buffer-name))
@@ -34,7 +53,7 @@
     (:eval (when-let ((vc (sleek-modeline-vc)))
              (concat vc (sleek-modeline--separator))))
     (:eval (sleek-modeline-major-mode))
-    " ")
+    (:eval (make-string sleek-modeline-edge-padding ?\s)))
   "The sleek mode-line format.")
 
 (defvar sleek-modeline--default-mode-line mode-line-format
@@ -51,34 +70,64 @@
   :group 'sleek-modeline
   (if sleek-modeline-mode
       (progn
-        (setq sleek-modeline--default-mode-line mode-line-format)
+	;; Save original format & face attributes
+	(unless (eq (default-value 'mode-line-format) sleek-modeline-format)
+	  (setq sleek-modeline--default-mode-line
+		(default-value 'mode-line-format))
+          (setq sleek-modeline--saved-modeline-attrs
+		(list :background (face-attribute 'mode-line :background nil t)
+                      :box (face-attribute 'mode-line :box nil t)
+                      :underline (face-attribute 'mode-line :underline nil t)
+                      :overline (face-attribute 'mode-line :overline nil t)))
+          (setq sleek-modeline--saved-modeline-inactive-attrs
+		(list :background (face-attribute 'mode-line-inactive :background nil t)
+                      :box (face-attribute 'mode-line-inactive :box nil t)
+                      :underline (face-attribute 'mode-line-inactive :underline nil t)
+                      :overline (face-attribute 'mode-line-inactive :overline nil t))))
+
+	;; Apply `sleek-modeline' format
         (setq-default mode-line-format sleek-modeline-format)
-        
+
+	;; Update faces after a theme change
         (add-hook 'after-load-theme-hook #'sleek-modeline--update-faces)
         (advice-add 'load-theme :after #'sleek-modeline--after-theme-change)
         (advice-add 'enable-theme :after #'sleek-modeline--after-theme-change)
 
-	(sleek-modeline-diagnostics-setup)
+	;; Reapply face after `spacious-padding' updates
+	;;(when (boundp 'spacious-padding-update-hook)
+	;;  (add-hook 'spacious-padding-update-hook #'sleek-modeline--update-faces))
+
+	;; Enable diagnostics if configured
+	(when sleek-modeline-enable-diagnostics
+	  (require 'sleek-modeline-diagnostics nil t)
+	  (sleek-modeline-diagnostics-enable))
+
         (sleek-modeline--update-faces))
-    
+
+    ;; Restore original format & face attributes
     (setq-default mode-line-format sleek-modeline--default-mode-line)
-    
+
+    ;; Restore saved faces
+    (when sleek-modeline--saved-modeline-attrs
+      (apply #'set-face-attribute 'mode-line nil
+             sleek-modeline--saved-modeline-attrs))
+    (when sleek-modeline--saved-modeline-inactive-attrs
+      (apply #'set-face-attribute 'mode-line-inactive nil
+             sleek-modeline--saved-modeline-inactive-attrs))
+
+    ;; Remove hooks and advices added by sleek-modeline
     (remove-hook 'after-load-theme-hook #'sleek-modeline--update-faces)
     (advice-remove 'load-theme #'sleek-modeline--after-theme-change)
     (advice-remove 'enable-theme #'sleek-modeline--after-theme-change)
-    
-    (when (facep 'mode-line)
-      (set-face-attribute 'mode-line nil
-			  :box 'unspecified
-			  :overline 'unspecified
-			  :underline 'unspecified))
 
-    (when (facep 'mode-line-inactive)
-      (set-face-attribute 'mode-line-inactive nil
-			  :box 'unspecified
-			  :overline 'unspecified
-			  :underline 'unspecified)))
-  
+    ;; Remove our update function from `spacious-padding' if it exists
+    ;;(when (boundp 'spacious-padding-update-hook)
+    ;;  (remove-hook 'spacious-padding-update-hook #'sleek-modeline--update-faces))
+
+    ;; Disable diagnostics segment if enabled
+    (when sleek-modeline-enable-diagnostics
+      (sleek-modeline-diagnostics-disable)))
+
   (force-mode-line-update t))
 
 (provide 'sleek-modeline)
