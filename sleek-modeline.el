@@ -17,7 +17,15 @@
 
 (require 'sleek-modeline-core)
 (require 'sleek-modeline-vc)
-(require 'sleek-modeline-diagnostics)
+
+;; Declare diagnostics functions to quiet the byte-compiler
+(declare-function sleek-modeline-diagnostics-enable "sleek-modeline-diagnostics")
+(declare-function sleek-modeline-diagnostics-disable "sleek-modeline-diagnostics")
+
+(defcustom sleek-modeline-enable-diagnostics t
+  "Enable diagnostics segment integration in sleek-modeline."
+  :type 'boolean
+  :group 'sleek-modeline)
 
 (defvar sleek-modeline--saved-modeline-attrs nil
   "Saved `mode-line' face attributes before sleek-modeline modified them.")
@@ -74,16 +82,27 @@
 
 	;; Apply `sleek-modeline' format
         (setq-default mode-line-format sleek-modeline-format)
-        
+
+	;; Update faces after a theme change
         (add-hook 'after-load-theme-hook #'sleek-modeline--update-faces)
         (advice-add 'load-theme :after #'sleek-modeline--after-theme-change)
         (advice-add 'enable-theme :after #'sleek-modeline--after-theme-change)
 
-	(sleek-modeline-diagnostics-setup)
+	;; Reapply face after `spacious-padding' updates
+	;;(when (boundp 'spacious-padding-update-hook)
+	;;  (add-hook 'spacious-padding-update-hook #'sleek-modeline--update-faces))
+
+	;; Enable diagnostics if configured
+	(when sleek-modeline-enable-diagnostics
+	  (require 'sleek-modeline-diagnostics nil t)
+	  (sleek-modeline-diagnostics-enable))
+
         (sleek-modeline--update-faces))
 
     ;; Restore original format & face attributes
     (setq-default mode-line-format sleek-modeline--default-mode-line)
+
+    ;; Restore saved faces
     (when sleek-modeline--saved-modeline-attrs
       (apply #'set-face-attribute 'mode-line nil
              sleek-modeline--saved-modeline-attrs))
@@ -91,9 +110,18 @@
       (apply #'set-face-attribute 'mode-line-inactive nil
              sleek-modeline--saved-modeline-inactive-attrs))
 
+    ;; Remove hooks and advices added by sleek-modeline
     (remove-hook 'after-load-theme-hook #'sleek-modeline--update-faces)
     (advice-remove 'load-theme #'sleek-modeline--after-theme-change)
-    (advice-remove 'enable-theme #'sleek-modeline--after-theme-change))
+    (advice-remove 'enable-theme #'sleek-modeline--after-theme-change)
+
+    ;; Remove our update function from `spacious-padding' if it exists
+    ;;(when (boundp 'spacious-padding-update-hook)
+    ;;  (remove-hook 'spacious-padding-update-hook #'sleek-modeline--update-faces))
+
+    ;; Disable diagnostics segment if enabled
+    (when sleek-modeline-enable-diagnostics
+      (sleek-modeline-diagnostics-disable)))
 
   (force-mode-line-update t))
 
