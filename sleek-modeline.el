@@ -18,12 +18,22 @@
 (require 'sleek-modeline-core)
 (require 'sleek-modeline-vc)
 
-;; Declare diagnostics functions to quiet the byte-compiler
+;; Declare segment functions to quiet the byte-compiler
 (declare-function sleek-modeline-diagnostics-enable "sleek-modeline-diagnostics")
 (declare-function sleek-modeline-diagnostics-disable "sleek-modeline-diagnostics")
+(declare-function sleek-modeline-project "sleek-modeline-project")
+(declare-function sleek-modeline-project-enable "sleek-modeline-project")
+(declare-function sleek-modeline-project-disable "sleek-modeline-project")
 
 (defcustom sleek-modeline-enable-diagnostics t
   "Enable diagnostics segment integration in sleek-modeline."
+  :type 'boolean
+  :group 'sleek-modeline)
+
+(defcustom sleek-modeline-enable-project t
+  "Enable project name segment integration in sleek-modeline.
+Supports `projectile' and the built-in `project.el', preferring
+projectile when both are active."
   :type 'boolean
   :group 'sleek-modeline)
 
@@ -43,6 +53,9 @@
     (:eval (make-string sleek-modeline-edge-padding ?\s))
     (:eval (when-let ((marker (sleek-modeline-modal-state-marker)))
              (concat marker " ")))
+    (:eval (when sleek-modeline-enable-project
+             (when-let ((proj (sleek-modeline-project)))
+               (concat proj (sleek-modeline--separator)))))
     (:eval (sleek-modeline-buffer-name))
     mode-line-format-right-align
     (:eval (when-let ((diag (sleek-modeline-diagnostics)))
@@ -93,14 +106,14 @@
         (advice-add 'load-theme :after #'sleek-modeline--after-theme-change)
         (advice-add 'enable-theme :after #'sleek-modeline--after-theme-change)
 
-	;; Reapply face after `spacious-padding' updates
-	;;(when (boundp 'spacious-padding-update-hook)
-	;;  (add-hook 'spacious-padding-update-hook #'sleek-modeline--update-faces))
-
-	;; Enable diagnostics if configured
+	;; Enable diagnostics segment if configured
 	(when sleek-modeline-enable-diagnostics
 	  (require 'sleek-modeline-diagnostics nil t)
 	  (sleek-modeline-diagnostics-enable))
+
+	;; Enable project segment if configured
+	(when sleek-modeline-enable-project
+	  (require 'sleek-modeline-project nil t))
 
         (sleek-modeline--update-faces))
 
@@ -119,10 +132,6 @@
     (remove-hook 'after-load-theme-hook #'sleek-modeline--update-faces)
     (advice-remove 'load-theme #'sleek-modeline--after-theme-change)
     (advice-remove 'enable-theme #'sleek-modeline--after-theme-change)
-
-    ;; Remove our update function from `spacious-padding' if it exists
-    ;;(when (boundp 'spacious-padding-update-hook)
-    ;;  (remove-hook 'spacious-padding-update-hook #'sleek-modeline--update-faces))
 
     ;; Disable diagnostics segment if enabled
     (when sleek-modeline-enable-diagnostics

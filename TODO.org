@@ -15,7 +15,10 @@
 ** DONE Customizable separator [2/2] :core:
  - [X] Customizable segment separator.
  - [X] Theme-aware face color dimming.
-
+   
+** TODO Segment registry [0/1] :core:
+- [ ] Have segments auto-register.
+    
 ** TODO CI checks [1/2] :ci:
 - [X] Add melpazoid workflow.
 - [ ] Add compilation workflow.
@@ -32,8 +35,9 @@
 - [ ] Ensure all files byte-compile cleanly.
 - [ ] Tag a versioned release.
 
+
 * Segments
-** Buffer name segment [3/3] :core:
+** DONE Buffer name segment [3/3] :core:
 - [X] Buffer/filename display.
 - [X] Modified buffer face.
 - [X] Optional nerd-icon per file type.
@@ -57,16 +61,18 @@
 - [ ] Buffer-local cache for ~vc-state~, invalidated via hooks: ~after-save-hook~, ~find-file-hook~, ~vc-checkin-hook~, ~vc-post-command-functions~.
 - [ ] Optional status symbol for at-a-glance state (e.g. ~●~ modified, ~+~ added, ~!~ conflict).
 
-** TODO Diagnostics (checker/linter) [0/3] :diagnostics:
+** TODO Diagnostics (checker/linter) [2/3] :diagnostics:
 NOTE(abi): use hook-driven cache for zero cost on redraw.
-- [ ] Display info/warning/error counts with flycheck.
-- [ ] Nerd-icons codicons & unicode icons (fallback).
+- [X] Display info/warning/error counts with flycheck.
+- [X] Nerd-icons codicons & unicode icons (fallback).
 - [ ] Add flymake support.
 
-** TODO Project name segment :core:
-- [ ] Display the current project name with ~projectile~.
-- [ ] Add ~project.el~ support.
+** DONE Project name segment [2/2] :core:
+- [X] Display the current project name with ~projectile~.
+- [X] Add ~project.el~ support.
 
+** TODO Eglot / lsp-mode segment [0/1] :lsp:
+- [ ] Display a small indicator when an LSP server is active in the buffer.
 ** TODO Music playback [0/5] :music:
 - [ ] Spotify interoperability.
 - [ ] Display the current track & artist.
@@ -74,5 +80,3 @@ NOTE(abi): use hook-driven cache for zero cost on redraw.
 - [ ] Control the play state.
 - [ ] Add Tidal support.
 
-** TODO Eglot / lsp-mode segment [0/1] :lsp:
-- [ ] Display a small indicator when an LSP server is active in the buffer.
