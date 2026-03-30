@@ -223,9 +223,14 @@ Returns the box line-width value to use for the mode-line."
 Derives mode-line backgrounds by darkening the current `default' face,
 ensuring the modeline is always visually distinct from buffer content."
   (let* ((modeline-height (sleek-modeline--get-height))
-	 (default-background (or sleek-modeline-background
-                                 (face-background 'default)
-                                 "black"))
+	 ;; NOTE(abi): `face-background' can return nil or unspecified-bg on terminal
+	 ;; frames or before a theme has set the default face.  We filter those out so
+	 ;; that colour blending functions never receive unparsable input.
+         (raw-background (or sleek-modeline-background
+			     (face-background 'default nil t)))
+         (default-background (if (sleek-modeline--valid-color-p raw-background)
+                                 raw-background
+                               "#000000"))
 	 (modeline-background (sleek-modeline--darken default-background 0.20))
 	 (modeline-inactive-background (sleek-modeline--darken default-background 0.15)))
     (when (facep 'mode-line)
@@ -261,12 +266,22 @@ ensuring the modeline is always visually distinct from buffer content."
   "Return the propertized segment separator."
   (propertize sleek-modeline-separator 'face 'sleek-modeline-separator-face))
 
+(defun sleek-modeline--valid-color-p (color)
+  "Return non-nil if COLOR is a string that `color-name-to-rgb' can parse."
+  (and (stringp color)
+       (not (string-prefix-p "unspecified" color))
+       (color-name-to-rgb color)))
+
 (defun sleek-modeline--blend-colors (c1 c2 alpha)
-  "Blend C1 toward C2 by ALPHA (0.0 = C2, 1.0 = C1)."
-  (apply #'color-rgb-to-hex
-         (cl-mapcar (lambda (a b) (+ (* alpha a) (* (- 1.0 alpha) b)))
-                    (color-name-to-rgb c1)
-                    (color-name-to-rgb c2))))
+  "Blend C1 toward C2 by ALPHA (0.0 = C2, 1.0 = C1).
+Returns C1 unchanged when either color cannot be parsed."
+  (let ((rgb1 (and (stringp c1) (color-name-to-rgb c1)))
+        (rgb2 (and (stringp c2) (color-name-to-rgb c2))))
+    (if (and rgb1 rgb2)
+        (apply #'color-rgb-to-hex
+               (cl-mapcar (lambda (a b) (+ (* alpha a) (* (- 1.0 alpha) b)))
+                          rgb1 rgb2))
+      (or c1 c2))))
 
 (defun sleek-modeline--darken (color amount)
   "Darken COLOR by AMOUNT (0.0 = unchanged, 1.0 = black)."
