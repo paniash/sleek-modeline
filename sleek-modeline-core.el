@@ -73,6 +73,11 @@ When non-nil, modified buffers will use
   :type 'boolean
   :group 'sleek-modeline)
 
+(defcustom sleek-modeline-hide-modal-inactive nil
+  "Hide modal state marker in inactive modelines."
+  :type 'boolean
+  :group 'sleek-modeline)
+
 (defcustom sleek-modeline-separator " » "
   "Separator string used between segments in the mode-line."
   :type 'string
@@ -98,6 +103,21 @@ When non-nil, modified buffers will use
 If nil, derives from `default` face."
   :type '(choice (const :tag "Derive from default" nil)
                  color)
+  :group 'sleek-modeline)
+
+(defcustom sleek-modeline-hide-file-icon-inactive nil
+  "Hide the file icon in inactive modelines."
+  :type 'boolean
+  :group 'sleek-modeline)
+
+(defcustom sleek-modeline-hide-major-mode-inactive nil
+  "Hide the major mode name in inactive modelines."
+  :type 'boolean
+  :group 'sleek-modeline)
+
+(defcustom sleek-modeline-hide-line-ending-inactive nil
+  "Hide the line ending style in inactive modelines."
+  :type 'boolean
   :group 'sleek-modeline)
 
 (defface sleek-modeline-modal-normal-face
@@ -145,30 +165,35 @@ Used for removed, conflict, unregistered, or needs-merge states."
   :group 'sleek-modeline-faces)
 
 (defun sleek-modeline-buffer-name ()
-  "Show buffer name with custom face and icon (if available).
-Changes color when buffer is modified."
+  "Show buffer name with custom face and optional icon (if available).
+Change color when buffer is modified and dim or hide components when
+the mode-line is inactive according to configuration."
   (let* ((file-name (buffer-file-name))
          (icon (when (and sleek-modeline-show-icons
                           file-name
                           (featurep 'nerd-icons))
                  (nerd-icons-icon-for-file file-name)))
          (buffer-name (substring-no-properties (format-mode-line "%b")))
-	 ;; Use modified face if buffer has unsaved changes
-	 (face (if (and sleek-modeline-highlight-modified-buffer-name
-			(buffer-modified-p))
-		   'sleek-modeline-buffer-name-modified-face
-		 'sleek-modeline-buffer-name-face)))
-    (if icon
-        (concat icon " " (propertize buffer-name 'face face))
-      (propertize buffer-name 'face face))))
+         (face (if (and sleek-modeline-highlight-modified-buffer-name
+                        (buffer-modified-p))
+                   'sleek-modeline-buffer-name-modified-face
+                 'sleek-modeline-buffer-name-face))
+         (icon (sleek-modeline--maybe-dim-or-hide
+                icon
+                sleek-modeline-hide-file-icon-inactive))
+         (buffer-name (sleek-modeline--maybe-dim-or-hide
+                       (propertize buffer-name 'face face) nil)))
+    (if icon (concat icon " " buffer-name) buffer-name)))
 
 (defun sleek-modeline-major-mode ()
   "Show major mode with custom face, stripping mode-line suffix indicators.
-For example, \"Emacs-Lisp/l\" becomes \"Emacs-Lisp\" and \"C++//\" becomes \"C++\"."
+Optionally dim or hide in inactive mode-lines."
   (let ((name (replace-regexp-in-string
                "/.*\\'" ""
                (substring-no-properties (format-mode-line mode-name)))))
-    (propertize name 'face 'sleek-modeline-major-mode-face)))
+    (sleek-modeline--maybe-dim-or-hide
+     (propertize name 'face 'sleek-modeline-major-mode-face)
+     sleek-modeline-hide-major-mode-inactive)))
 
 (defun sleek-modeline--modal-state ()
   "Return the current modal editing state as a single letter, or nil.
@@ -202,11 +227,14 @@ Checks `evil-mode' first, then `meow-mode'.  Returns nil if neither is active."
 (defun sleek-modeline-modal-state-marker ()
   "Return a propertized, modal state marker with state-dependent background."
   (when-let ((state (sleek-modeline--modal-state)))
-    (let ((face (pcase state
-                  ("N" 'sleek-modeline-modal-normal-face)
-                  ("I" 'sleek-modeline-modal-insert-face)
-                  ("V" 'sleek-modeline-modal-visual-face)
-                  (_   'sleek-modeline-modal-other-face))))
+    (let* ((base-face (pcase state
+                        ("N" 'sleek-modeline-modal-normal-face)
+                        ("I" 'sleek-modeline-modal-insert-face)
+                        ("V" 'sleek-modeline-modal-visual-face)
+                        (_   'sleek-modeline-modal-other-face)))
+           (face (if (sleek-modeline--inactive-p)
+                     (sleek-modeline--dim-background base-face)
+                   base-face)))
       (propertize (format " %s " state) 'face face))))
 
 (defun sleek-modeline--get-height ()
@@ -223,24 +251,24 @@ Returns the box line-width value to use for the mode-line."
 Derives mode-line backgrounds by darkening the current `default' face,
 ensuring the modeline is always visually distinct from buffer content."
   (let* ((modeline-height (sleek-modeline--get-height))
-	 ;; NOTE(abi): `face-background' can return nil or unspecified-bg on terminal
-	 ;; frames or before a theme has set the default face.  We filter those out so
-	 ;; that colour blending functions never receive unparsable input.
+         ;; NOTE(abi): `face-background' can return nil or unspecified-bg on terminal
+         ;; frames or before a theme has set the default face.  We filter those out so
+         ;; that colour blending functions never receive unparsable input.
          (raw-background (or sleek-modeline-background
-			     (face-background 'default nil t)))
+                             (face-background 'default nil t)))
          (default-background (if (sleek-modeline--valid-color-p raw-background)
                                  raw-background
                                "#000000"))
-	 (modeline-background (sleek-modeline--darken default-background 0.20))
-	 (modeline-inactive-background (sleek-modeline--darken default-background 0.15)))
+         (modeline-background (sleek-modeline--darken default-background 0.30))
+         (modeline-inactive-background (sleek-modeline--darken default-background 0.15)))
     (when (facep 'mode-line)
       (set-face-attribute 'mode-line nil
-			  :background modeline-background
+                          :background modeline-background
                           :box `(:line-width ,modeline-height :color ,modeline-background)
                           :underline nil))
     (when (facep 'mode-line-inactive)
       (set-face-attribute 'mode-line-inactive nil
-			  :background modeline-inactive-background
+                          :background modeline-inactive-background
                           :box `(:line-width ,modeline-height :color ,modeline-inactive-background)
                           :underline nil))
     (sleek-modeline--update-separator-face)
@@ -255,16 +283,57 @@ ensuring the modeline is always visually distinct from buffer content."
     (_ "—")))
 
 (defun sleek-modeline-line-ending-indicator ()
-  "Return a propertized line ending string, or empty string for non-file buffers."
+  "Return a propertized line ending string, or empty string for non-file buffers.
+Dim or hide in inactive mode-lines according to configuration."
   (if buffer-file-name
-      (propertize (sleek-modeline--line-ending)
-                  'face 'sleek-modeline-line-ending-face
-                  'help-echo "Buffer line endings")
+      (sleek-modeline--maybe-dim-or-hide
+       (propertize (sleek-modeline--line-ending)
+                   'face 'sleek-modeline-line-ending-face
+                   'help-echo "Buffer line endings")
+       sleek-modeline-hide-line-ending-inactive)
     ""))
 
 (defun sleek-modeline--separator ()
   "Return the propertized segment separator."
   (propertize sleek-modeline-separator 'face 'sleek-modeline-separator-face))
+
+(defun sleek-modeline--inactive-p ()
+  "Return non-nil if the current mode-line is inactive."
+  (not (mode-line-window-selected-p)))
+
+(defun sleek-modeline--dim (str)
+  "Return STR with an inactive/dimmed face."
+  (propertize str 'face 'mode-line-inactive))
+;;(add-face-text-property 0 (length str) 'mode-line-inactive 'append str))
+
+(defun sleek-modeline--dim-background (face)
+  "Return a dimmed version of FACE by blending its background."
+  (let* ((bg (face-background face nil t))
+         (inactive-bg (face-background 'mode-line-inactive nil t))
+         (dimmed-bg (if (and bg inactive-bg)
+                        (sleek-modeline--blend-colors bg inactive-bg 0.5)
+                      inactive-bg)))
+    `(:inherit ,face :background ,dimmed-bg)))
+
+(defun sleek-modeline--dim-icon (icon)
+  "Return ICON dimmed for inactive mode-line while preserving its foreground."
+  (let* ((bg (face-background 'mode-line-inactive nil t))
+         ;; derive a temporary face with blended background
+         (dim-face (make-face 'sleek-modeline-temp-dim-face)))
+    (set-face-attribute dim-face nil
+                        :inherit (or (get-text-property 0 'face icon) 'default)
+                        :background bg)
+    (propertize icon 'face dim-face)))
+
+(defun sleek-modeline--maybe-dim-or-hide (str hide-inactive)
+  "Return STR, dimmed or hidden if inactive.
+If HIDE-INACTIVE is non-nil, return nil when inactive."
+  (cond
+   ((not str) nil)
+   ((sleek-modeline--inactive-p)
+    (unless hide-inactive
+      (sleek-modeline--dim str)))
+   (t str)))
 
 (defun sleek-modeline--valid-color-p (color)
   "Return non-nil if COLOR is a string that `color-name-to-rgb' can parse."

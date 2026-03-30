@@ -29,15 +29,27 @@ When nil, shows the git branch icon."
   :type 'boolean
   :group 'sleek-modeline)
 
+(defcustom sleek-modeline-hide-vc-icon-inactive nil
+  "Hide version control icon in inactive modelines."
+  :type 'boolean
+  :group 'sleek-modeline)
+
+(defcustom sleek-modeline-hide-vc-branch-inactive nil
+  "Hide the version control branch name in inactive modelines."
+  :type 'boolean
+  :group 'sleek-modeline)
+
 (defun sleek-modeline-vc--branch-icon ()
   "Return the appropriate branch icon based on configuration.
-Returns empty string if icons are disabled or nerd-icons is not available."
+Returns empty string if icons are disabled, nerd-icons is not available,
+or if hidden due to inactive mode-line."
   (when (and sleek-modeline-vc-show-icon
              sleek-modeline-show-icons
              (featurep 'nerd-icons))
-    (if sleek-modeline-vc-use-github-icon
-        (nerd-icons-octicon "nf-oct-mark_github")
-      (nerd-icons-octicon "nf-oct-git_branch"))))
+    (let ((icon (if sleek-modeline-vc-use-github-icon
+                    (nerd-icons-octicon "nf-oct-mark_github")
+                  (nerd-icons-octicon "nf-oct-git_branch"))))
+      (sleek-modeline--maybe-dim-or-hide icon sleek-modeline-hide-vc-icon-inactive))))
 
 (defun sleek-modeline-vc--branch-name ()
   "Get the current branch name from `vc-mode'.
@@ -47,7 +59,6 @@ Returns nil if not in a version-controlled file."
       (let ((branch (string-trim (substring-no-properties (match-string 1 vc-mode)))))
         (unless (string-empty-p branch)
           branch)))))
-
 
 (defun sleek-modeline-vc--state-face ()
   "Return the appropriate face based on VC state.
@@ -67,12 +78,14 @@ Uses different faces for modified, conflict, and clean states."
 Returns nil if not in a version-controlled file or if an error occurs."
   (condition-case nil
       (when-let ((branch (sleek-modeline-vc--branch-name)))
-        (let ((icon (sleek-modeline-vc--branch-icon))
-              (face (sleek-modeline-vc--state-face)))
-          (concat
-           (when icon
-             (concat (propertize icon 'face face) " "))
-           (propertize branch 'face face))))
+        (let* ((icon (sleek-modeline-vc--branch-icon))
+               (face (sleek-modeline-vc--state-face))
+               (branch-str (propertize branch 'face face)))
+          (sleek-modeline--maybe-dim-or-hide
+           (if icon
+               (concat icon " " branch-str)
+             branch-str)
+           sleek-modeline-hide-vc-branch-inactive)))
     (error nil)))
 
 (provide 'sleek-modeline-vc)

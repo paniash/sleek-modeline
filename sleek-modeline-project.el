@@ -20,6 +20,11 @@
   (declare-function project-root "project")
   (defvar projectile-mode))
 
+(defcustom sleek-modeline-hide-project-name-inactive nil
+  "Hide project name in inactive modelines."
+  :type 'boolean
+  :group 'sleek-modeline)
+
 (defface sleek-modeline-project-face
   '((t (:inherit font-lock-string-face :weight bold :slant normal)))
   "Face for the project name in `sleek-modeline'."
@@ -47,7 +52,9 @@ Prefers `projectile' when active, falls back to `project.el'."
   "Return the propertized project name for the mode-line, or nil."
   (condition-case nil
       (when-let ((name (sleek-modeline-project--name)))
-        (propertize name 'face 'sleek-modeline-project-face))
+	(sleek-modeline--maybe-dim-or-hide
+	 (propertize name 'face 'sleek-modeline-project-face)
+	 sleek-modeline-hide-project-name-inactive))
     (error nil)))
 
 (provide 'sleek-modeline-project)
