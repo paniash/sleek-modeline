@@ -6,8 +6,8 @@
 
 ;;; Commentary:
 ;; Diagnostics (checker/linter) control segment for the `sleek-modeline' package.
-;; Supports flycheck showing error, warning and info counts.  The cache is hook-driven,
-;; i.e, it updates only when a checker finishes.
+;; Supports flycheck and flymake, showing error, warning and info counts.
+;; The cache is hook-driven, i.e. it updates only when a checker finishes.
 
 ;;; Code:
 
@@ -17,12 +17,15 @@
 ;; NOTE(abi): these get loaded only if available.
 (eval-when-compile
   (declare-function flycheck-count-errors "flycheck")
+  (declare-function flymake-diagnostics "flymake")
+  (declare-function flymake-diagnostic-type "flymake")
   (declare-function nerd-icons-codicon "nerd-icons")
   (defvar flycheck-mode)
-  (defvar flycheck-current-errors))
+  (defvar flycheck-current-errors)
+  (defvar flymake-mode))
 
 (defvar sleek-modeline-diagnostics--enabled nil
-  "Non-nil means diagnostics integration with Flycheck is enabled globally.
+  "Non-nil means diagnostics integration is enabled globally.
 Used as a sentinel to ensure hooks are only installed once.")
 
 (defvar-local sleek-modeline-diagnostics--cache nil
@@ -148,6 +151,34 @@ is nil."
       (sleek-modeline-diagnostics--flycheck-setup)
     (sleek-modeline-diagnostics--flycheck-teardown)))
 
+(defun sleek-modeline-diagnostics--flymake-update (&rest _)
+  "Recompute the diagnostics cache from the current flymake state."
+  (setq sleek-modeline-diagnostics--cache
+        (when (bound-and-true-p flymake-mode)
+          (let* ((diags (flymake-diagnostics))
+                 (errors (length (seq-filter (lambda (d) (eq (flymake-diagnostic-type d) :error)) diags)))
+                 (warnings (length (seq-filter (lambda (d) (eq (flymake-diagnostic-type d) :warning)) diags)))
+                 (infos (length (seq-filter (lambda (d) (eq (flymake-diagnostic-type d) :note)) diags))))
+            (sleek-modeline-diagnostics--format errors warnings infos))))
+  (force-mode-line-update))
+
+(defun sleek-modeline-diagnostics--flymake-setup ()
+  "Attach flymake hooks for the current buffer."
+  (add-hook 'flymake-after-syntax-check-functions
+            #'sleek-modeline-diagnostics--flymake-update nil t))
+
+(defun sleek-modeline-diagnostics--flymake-teardown ()
+  "Remove flymake hooks and clear cache for the current buffer."
+  (remove-hook 'flymake-after-syntax-check-functions
+               #'sleek-modeline-diagnostics--flymake-update t)
+  (setq sleek-modeline-diagnostics--cache nil))
+
+(defun sleek-modeline-diagnostics--flymake-mode-hook ()
+  "Setup or tear down flymake integration based on `flymake-mode' state."
+  (if flymake-mode
+      (sleek-modeline-diagnostics--flymake-setup)
+    (sleek-modeline-diagnostics--flymake-teardown)))
+
 (defun sleek-modeline-diagnostics ()
   "Return the propertized diagnostics string for the current buffer, or nil.
 The value is read from a hook-driven cache - no work is done on redraw."
@@ -163,7 +194,10 @@ Call this once inside `sleek-modeline-mode' activation."
     (setq sleek-modeline-diagnostics--enabled t)
     (when (featurep 'flycheck)
       (add-hook 'flycheck-mode-hook
-		#'sleek-modeline-diagnostics--flycheck-mode-hook))))
+                #'sleek-modeline-diagnostics--flycheck-mode-hook))
+    (when (featurep 'flymake)
+      (add-hook 'flymake-mode-hook
+                #'sleek-modeline-diagnostics--flymake-mode-hook))))
 
 (defun sleek-modeline-diagnostics-disable ()
   "Disable diagnostics segment integration.
@@ -175,10 +209,15 @@ This ensures no buffer-local hooks or cached state remain."
     (when (featurep 'flycheck)
       (remove-hook 'flycheck-mode-hook
                    #'sleek-modeline-diagnostics--flycheck-mode-hook))
+    (when (featurep 'flymake)
+      (remove-hook 'flymake-mode-hook
+                   #'sleek-modeline-diagnostics--flymake-mode-hook))
     (dolist (buf (buffer-list))
       (with-current-buffer buf
-	(when (bound-and-true-p flycheck-mode)
-          (sleek-modeline-diagnostics--flycheck-teardown))))))
+        (when (bound-and-true-p flycheck-mode)
+          (sleek-modeline-diagnostics--flycheck-teardown))
+        (when (bound-and-true-p flymake-mode)
+          (sleek-modeline-diagnostics--flymake-teardown))))))
 
 (provide 'sleek-modeline-diagnostics)
 ;;; sleek-modeline-diagnostics.el ends here
