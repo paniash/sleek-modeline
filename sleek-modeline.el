@@ -85,6 +85,39 @@ Supports `eglot' and `lsp-mode' backends."
 (defvar sleek-modeline--default-mode-line mode-line-format
   "Storage for the default `mode-line-format'.")
 
+(defun sleek-modeline--segment-eval-form (seg)
+  "Return an (:eval ...) mode-line form for segment SEG."
+  (let* ((fn (plist-get seg :fn))
+         (sep (plist-get seg :separator))
+         (cond-var (plist-get seg :condition))
+         (core (if sep
+                   (let ((suffix (if (eq sep t)
+                                     '(sleek-modeline--separator)
+                                   sep)))
+                     `(when-let ((result (,fn)))
+                        (concat result ,suffix)))
+                 `(,fn)))
+         (form (if cond-var `(when ,cond-var ,core) core)))
+    `(:eval ,form)))
+
+(defun sleek-modeline--build-format ()
+  "Rebuild `sleek-modeline-format' from the segment registry."
+  (let* ((by-priority (lambda (a b)
+                        (< (plist-get a :priority) (plist-get b :priority))))
+         (left  (sort (seq-filter (lambda (s) (eq (plist-get s :side) 'left))
+                                  sleek-modeline--segment-registry)
+                      by-priority))
+         (right (sort (seq-filter (lambda (s) (eq (plist-get s :side) 'right))
+                                  sleek-modeline--segment-registry)
+                      by-priority)))
+    (setq sleek-modeline-format
+          `("%e"
+            (:eval (make-string sleek-modeline-edge-padding ?\s))
+            ,@(mapcar #'sleek-modeline--segment-eval-form left)
+            mode-line-format-right-align
+            ,@(mapcar #'sleek-modeline--segment-eval-form right)
+            (:eval (make-string sleek-modeline-edge-padding ?\s))))))
+
 (defun sleek-modeline--after-theme-change (&rest _)
   "Update faces after theme change."
   (run-with-timer 0.1 nil #'sleek-modeline--update-faces))
@@ -122,6 +155,7 @@ we read `(face-background 'default ...)'."
                  #'sleek-modeline--deferred-face-update)
     (remove-hook 'after-make-frame-functions
                  #'sleek-modeline--deferred-face-update)
+
     ;; Defer to the next idle moment so that the new frame is fully
     ;; realised (theme applied, `default' background set).  Without this,
     ;; `face-background' can still return the pre-theme colour that the
