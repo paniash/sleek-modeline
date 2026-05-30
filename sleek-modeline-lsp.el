@@ -186,5 +186,14 @@ Removes global hooks and clears cached state in all buffers."
       (with-current-buffer buf
         (setq sleek-modeline-lsp--cache nil)))))
 
+(sleek-modeline-register-segment 'lsp
+  :fn 'sleek-modeline-lsp
+  :side 'right
+  :priority 30
+  :separator t
+  :condition 'sleek-modeline-enable-lsp
+  :on-enable 'sleek-modeline-lsp-enable
+  :on-disable 'sleek-modeline-lsp-disable)
+
 (provide 'sleek-modeline-lsp)
 ;;; sleek-modeline-lsp.el ends here

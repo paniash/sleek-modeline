@@ -57,5 +57,12 @@ Prefers `projectile' when active, falls back to `project.el'."
 	 sleek-modeline-hide-project-name-inactive))
     (error nil)))
 
+(sleek-modeline-register-segment 'project
+  :fn 'sleek-modeline-project
+  :side 'left
+  :priority 10
+  :separator t
+  :condition 'sleek-modeline-enable-project)
+
 (provide 'sleek-modeline-project)
 ;;; sleek-modeline-project.el ends here

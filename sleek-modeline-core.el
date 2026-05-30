@@ -16,6 +16,28 @@
 ;; NOTE(abi): optional dependency; only gets loaded if available.
 (declare-function nerd-icons-icon-for-file "nerd-icons")
 
+(defvar sleek-modeline--segment-registry nil
+  "List of registered segment descriptors (plists).
+Each entry is a plist with keys.
+  :name       symbol - Unique segment identifier.
+  :fn         symbol — Display function (returns string or nil).
+  :side       `left' or `right'.
+  :priority   integer - Lower means closer to the outer edge.
+  :separator  nil | t | STRING — nil: no suffix; t: standard separator;
+              string: literal string to append after a non-nil result.
+  :condition  symbol - Variable that must be non-nil to display the segment.
+  :on-enable  symbol - Function called when `sleek-modeline-mode' activates.
+  :on-disable symbol - Function called when `sleek-modeline-mode' deactivates.")
+
+(defun sleek-modeline-register-segment (name &rest props)
+  "Register a segment under NAME with the given PROPS plist.
+If a segment with NAME already exists it is replaced.
+See `sleek-modeline--segment-registry' for valid keys."
+  (setq sleek-modeline--segment-registry
+        (cons (append (list :name name) props)
+              (seq-remove (lambda (s) (eq (plist-get s :name) name))
+                          sleek-modeline--segment-registry))))
+
 (defgroup sleek-modeline nil
   "Customization group for `sleek-modeline'."
   :group 'mode-line
@@ -283,15 +305,14 @@ ensuring the modeline is always visually distinct from buffer content."
     (_ "—")))
 
 (defun sleek-modeline-line-ending-indicator ()
-  "Return a propertized line ending string, or empty string for non-file buffers.
+  "Return a propertized line ending string for file-backed buffers, or nil.
 Dim or hide in inactive mode-lines according to configuration."
-  (if buffer-file-name
-      (sleek-modeline--maybe-dim-or-hide
-       (propertize (sleek-modeline--line-ending)
-                   'face 'sleek-modeline-line-ending-face
-                   'help-echo "Buffer line endings")
-       sleek-modeline-hide-line-ending-inactive)
-    ""))
+  (when buffer-file-name
+    (sleek-modeline--maybe-dim-or-hide
+     (propertize (sleek-modeline--line-ending)
+                 'face 'sleek-modeline-line-ending-face
+                 'help-echo "Buffer line endings")
+     sleek-modeline-hide-line-ending-inactive)))
 
 (defun sleek-modeline--separator ()
   "Return the propertized segment separator."
@@ -363,6 +384,28 @@ Returns C1 unchanged when either color cannot be parsed."
     (when (and shadow-fg bg)
       (set-face-attribute 'sleek-modeline-separator-face nil
                           :foreground (sleek-modeline--blend-colors shadow-fg bg 0.5)))))
+
+(sleek-modeline-register-segment 'modal-state
+				 :fn 'sleek-modeline-modal-state-marker
+				 :side 'left
+				 :priority 0
+				 :separator " ")
+
+(sleek-modeline-register-segment 'buffer-name
+				 :fn 'sleek-modeline-buffer-name
+				 :side 'left
+				 :priority 20)
+
+(sleek-modeline-register-segment 'line-ending
+				 :fn 'sleek-modeline-line-ending-indicator
+				 :side 'right
+				 :priority 10
+				 :separator t)
+
+(sleek-modeline-register-segment 'major-mode
+				 :fn 'sleek-modeline-major-mode
+				 :side 'right
+				 :priority 40)
 
 (provide 'sleek-modeline-core)
 ;;; sleek-modeline-core.el ends here

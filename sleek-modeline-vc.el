@@ -173,5 +173,13 @@ Call this once inside `sleek-modeline-mode' activation."
       (with-current-buffer buf
         (setq sleek-modeline-vc--state-cache 'unset)))))
 
+(sleek-modeline-register-segment 'vc
+  :fn 'sleek-modeline-vc
+  :side 'right
+  :priority 20
+  :separator t
+  :on-enable 'sleek-modeline-vc-enable
+  :on-disable 'sleek-modeline-vc-disable)
+
 (provide 'sleek-modeline-vc)
 ;;; sleek-modeline-vc.el ends here

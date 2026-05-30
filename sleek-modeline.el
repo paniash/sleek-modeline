@@ -18,17 +18,6 @@
 (require 'sleek-modeline-core)
 (require 'sleek-modeline-vc)
 
-;; Declare segment functions to quiet the byte-compiler
-(declare-function sleek-modeline-vc-enable "sleek-modeline-vc")
-(declare-function sleek-modeline-vc-disable "sleek-modeline-vc")
-(declare-function sleek-modeline-diagnostics-enable "sleek-modeline-diagnostics")
-(declare-function sleek-modeline-diagnostics-disable "sleek-modeline-diagnostics")
-(declare-function sleek-modeline-project "sleek-modeline-project")
-(declare-function sleek-modeline-project-enable "sleek-modeline-project")
-(declare-function sleek-modeline-project-disable "sleek-modeline-project")
-(declare-function sleek-modeline-lsp "sleek-modeline-lsp")
-(declare-function sleek-modeline-lsp-enable "sleek-modeline-lsp")
-(declare-function sleek-modeline-lsp-disable "sleek-modeline-lsp")
 
 (defcustom sleek-modeline-enable-diagnostics t
   "Enable diagnostics segment integration in sleek-modeline."
@@ -59,31 +48,44 @@ Supports `eglot' and `lsp-mode' backends."
 (defvar sleek-modeline--saved-modeline-inactive-attrs nil
   "Saved `mode-line-inactive' face attributes before sleek-modeline modified them.")
 
-(defvar sleek-modeline-format
-  '("%e"
-    (:eval (make-string sleek-modeline-edge-padding ?\s))
-    (:eval (when-let ((marker (sleek-modeline-modal-state-marker)))
-             (concat marker " ")))
-    (:eval (when sleek-modeline-enable-project
-             (when-let ((proj (sleek-modeline-project)))
-               (concat proj (sleek-modeline--separator)))))
-    (:eval (sleek-modeline-buffer-name))
-    mode-line-format-right-align
-    (:eval (when-let ((diag (sleek-modeline-diagnostics)))
-             (concat diag (sleek-modeline--separator))))
-    (:eval (when-let ((eol (sleek-modeline-line-ending-indicator)))
-             (unless (string-empty-p eol)
-               (concat eol (sleek-modeline--separator)))))
-    (:eval (when-let ((vc (sleek-modeline-vc)))
-             (concat vc (sleek-modeline--separator))))
-    (:eval (when-let ((lsp (sleek-modeline-lsp)))
-             (concat lsp (sleek-modeline--separator))))
-    (:eval (sleek-modeline-major-mode))
-    (:eval (make-string sleek-modeline-edge-padding ?\s)))
-  "The sleek mode-line format.")
+(defvar sleek-modeline-format nil
+  "The sleek mode-line format. Built dynamically by `sleek-modeline--build-format'.")
 
 (defvar sleek-modeline--default-mode-line mode-line-format
   "Storage for the default `mode-line-format'.")
+
+(defun sleek-modeline--segment-eval-form (seg)
+  "Return an (:eval ...) mode-line form for segment SEG."
+  (let* ((fn (plist-get seg :fn))
+         (sep (plist-get seg :separator))
+         (cond-var (plist-get seg :condition))
+         (core (if sep
+                   (let ((suffix (if (eq sep t)
+                                     '(sleek-modeline--separator)
+                                   sep)))
+                     `(when-let ((result (,fn)))
+                        (concat result ,suffix)))
+                 `(,fn)))
+         (form (if cond-var `(when ,cond-var ,core) core)))
+    `(:eval ,form)))
+
+(defun sleek-modeline--build-format ()
+  "Rebuild `sleek-modeline-format' from the segment registry."
+  (let* ((by-priority (lambda (a b)
+                        (< (plist-get a :priority) (plist-get b :priority))))
+         (left  (sort (seq-filter (lambda (s) (eq (plist-get s :side) 'left))
+                                  sleek-modeline--segment-registry)
+                      by-priority))
+         (right (sort (seq-filter (lambda (s) (eq (plist-get s :side) 'right))
+                                  sleek-modeline--segment-registry)
+                      by-priority)))
+    (setq sleek-modeline-format
+          `("%e"
+            (:eval (make-string sleek-modeline-edge-padding ?\s))
+            ,@(mapcar #'sleek-modeline--segment-eval-form left)
+            mode-line-format-right-align
+            ,@(mapcar #'sleek-modeline--segment-eval-form right)
+            (:eval (make-string sleek-modeline-edge-padding ?\s))))))
 
 (defun sleek-modeline--after-theme-change (&rest _)
   "Update faces after theme change."
@@ -115,13 +117,14 @@ Designed to be hung on `server-after-make-frame-hook' and
 `after-make-frame-functions'.  Runs a single face update in the
 context of FRAME (or the selected frame) on an idle timer so that
 face realisation on the new frame has a chance to complete before
-we read `(face-background 'default ...)'."
-  (when (and sleek-modeline-mode
+we read `(face-background \='default ...)'."
+  (when (and (bound-and-true-p sleek-modeline-mode)
              (sleek-modeline--real-frame-p frame))
     (remove-hook 'server-after-make-frame-hook
                  #'sleek-modeline--deferred-face-update)
     (remove-hook 'after-make-frame-functions
                  #'sleek-modeline--deferred-face-update)
+
     ;; Defer to the next idle moment so that the new frame is fully
     ;; realised (theme applied, `default' background set).  Without this,
     ;; `face-background' can still return the pre-theme colour that the
@@ -141,8 +144,19 @@ we read `(face-background 'default ...)'."
   :group 'sleek-modeline
   (if sleek-modeline-mode
       (progn
+	;; Load optional modules so they self-register before building the format
+        (when sleek-modeline-enable-diagnostics
+          (require 'sleek-modeline-diagnostics nil t))
+        (when sleek-modeline-enable-project
+          (require 'sleek-modeline-project nil t))
+        (when sleek-modeline-enable-lsp
+          (require 'sleek-modeline-lsp nil t))
+
+	;; Build the format from the segment registry
+        (sleek-modeline--build-format)
+
 	;; Save original format & face attributes
-	(unless (eq (default-value 'mode-line-format) sleek-modeline-format)
+	(unless (equal (default-value 'mode-line-format) sleek-modeline-format)
 	  (setq sleek-modeline--default-mode-line
 		(default-value 'mode-line-format))
           (setq sleek-modeline--saved-modeline-attrs
@@ -164,22 +178,13 @@ we read `(face-background 'default ...)'."
         (advice-add 'load-theme :after #'sleek-modeline--after-theme-change)
         (advice-add 'enable-theme :after #'sleek-modeline--after-theme-change)
 
-	;; Enable vc segment cache hooks
-        (sleek-modeline-vc-enable)
-
-	;; Enable diagnostics segment if configured
-	(when sleek-modeline-enable-diagnostics
-	  (require 'sleek-modeline-diagnostics nil t)
-	  (sleek-modeline-diagnostics-enable))
-
-	;; Enable project segment if configured
-	(when sleek-modeline-enable-project
-	  (require 'sleek-modeline-project nil t))
-
-	;; Enable LSP segment if configured
-	(when sleek-modeline-enable-lsp
-	  (require 'sleek-modeline-lsp nil t)
-	  (sleek-modeline-lsp-enable))
+	;; Activate registered segments
+        (dolist (seg sleek-modeline--segment-registry)
+          (let ((condition (plist-get seg :condition))
+                (on-enable (plist-get seg :on-enable)))
+            (when (and on-enable
+                       (or (null condition) (symbol-value condition)))
+              (funcall on-enable))))
 
 	;; Update faces now if a real (non-daemon-initial) frame exists;
 	;; otherwise defer the first update until a client frame shows up.
@@ -214,16 +219,13 @@ we read `(face-background 'default ...)'."
     (advice-remove 'load-theme #'sleek-modeline--after-theme-change)
     (advice-remove 'enable-theme #'sleek-modeline--after-theme-change)
 
-    ;; Disable vc segment cache hooks
-    (sleek-modeline-vc-disable)
-
-    ;; Disable diagnostics segment if enabled
-    (when sleek-modeline-enable-diagnostics
-      (sleek-modeline-diagnostics-disable))
-
-    ;; Disable LSP segment if enabled
-    (when sleek-modeline-enable-lsp
-      (sleek-modeline-lsp-disable)))
+    ;; Deactivate registered segments
+    (dolist (seg sleek-modeline--segment-registry)
+      (let ((condition (plist-get seg :condition))
+            (on-disable (plist-get seg :on-disable)))
+        (when (and on-disable
+                   (or (null condition) (symbol-value condition)))
+          (funcall on-disable)))))
 
   (force-mode-line-update t))
 

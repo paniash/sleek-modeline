@@ -219,5 +219,14 @@ This ensures no buffer-local hooks or cached state remain."
         (when (bound-and-true-p flymake-mode)
           (sleek-modeline-diagnostics--flymake-teardown))))))
 
+(sleek-modeline-register-segment 'diagnostics
+  :fn 'sleek-modeline-diagnostics
+  :side 'right
+  :priority 0
+  :separator t
+  :condition 'sleek-modeline-enable-diagnostics
+  :on-enable 'sleek-modeline-diagnostics-enable
+  :on-disable 'sleek-modeline-diagnostics-disable)
+
 (provide 'sleek-modeline-diagnostics)
 ;;; sleek-modeline-diagnostics.el ends here
