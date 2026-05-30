@@ -117,8 +117,8 @@ Designed to be hung on `server-after-make-frame-hook' and
 `after-make-frame-functions'.  Runs a single face update in the
 context of FRAME (or the selected frame) on an idle timer so that
 face realisation on the new frame has a chance to complete before
-we read `(face-background 'default ...)'."
   (when (and sleek-modeline-mode
+we read `(face-background \='default ...)'."
              (sleek-modeline--real-frame-p frame))
     (remove-hook 'server-after-make-frame-hook
                  #'sleek-modeline--deferred-face-update)
