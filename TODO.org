@@ -15,16 +15,16 @@
 ** DONE Customizable separator [2/2] :core:
  - [X] Customizable segment separator.
  - [X] Theme-aware face color dimming.
-   
-** TODO Segment registry [0/1] :core:
-- [ ] Have segments auto-register.
-    
+
+** DONE Segment registry [1/1] :core:
+- [X] Have segments auto-register.
+
 ** DONE Miscellaneous [1/1] :misc:
 - [X] Global icon toggle.
 
-** TODO CI checks [1/2] :ci:
+** DONE CI checks [2/2] :ci:
 - [X] Add melpazoid workflow.
-- [ ] Add compilation workflow.
+- [X] Add compilation workflow.
 
 ** TODO README.org :docs:
 - [ ] Description.
@@ -33,9 +33,9 @@
 - [ ] Customization reference, etc.
 - [ ] Contributions & license.
 
-** TODO MELPA submission :release:
-- [ ] Verify package headers and package requires.
-- [ ] Ensure all files byte-compile cleanly.
+** TODO MELPA submission [2/3] :release:
+- [X] Verify package headers and package requires.
+- [X] Ensure all files byte-compile cleanly.
 - [ ] Tag a versioned release.
 
 
@@ -85,4 +85,3 @@ NOTE(abi): use hook-driven cache for zero cost on redraw.
 - [ ] Display the play state.
 - [ ] Control the play state.
 - [ ] Add Tidal support.
-

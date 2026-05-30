@@ -4,7 +4,9 @@
 #+options: toc:2
 
 #+html: <div align="center">
-#+html: <a href="https://github.com/abidanBrito/sleek-modeline/actions/workflows/melpazoid.yml"><img alt="melpazoid" src="https://github.com/abidanBrito/region-cursors/actions/workflows/melpazoid.yml/badge.svg"/></a>
+#+html: <a href="https://github.com/abidanBrito/sleek-modeline/actions/workflows/compile.yml"><img alt="compile" src="https://github.com/abidanBrito/sleek-modeline/actions/workflows/compile.yml/badge.svg"/></a>
+#+html: <a href="https://github.com/abidanBrito/sleek-modeline/actions/workflows/melpazoid.yml"><img alt="melpazoid" src="https://github.com/abidanBrito/sleek-modeline/actions/workflows/melpazoid.yml/badge.svg"/></a>
+#+html: <img alt="Emacs 29.1+" src="https://img.shields.io/badge/Emacs-29.1%2B-blueviolet.svg"/>
 #+html: <a href="https://github.com/abidanBrito/sleek-modeline"><img alt="status" src="https://img.shields.io/badge/status-WIP-red.svg"/></a>
 #+html: <a href="https://github.com/abidanBrito/sleek-modeline/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-brightgreen.svg"/></a>
 #+html: </div>
@@ -15,9 +17,16 @@
 - [[#Features][Features]]
 - [[#Installation][Installation]]
 - [[#Customization][Customization]]
+  - [[#General][General]]
+  - [[#Inactive-mode-line][Inactive mode-line]]
+  - [[#Segments][Segments]]
+  - [[#Version-Control][Version Control]]
+  - [[#Diagnostics][Diagnostics]]
+  - [[#Project][Project]]
+  - [[#LSP][LSP]]
 - [[#Contributing][Contributing]]
 - [[#License][License]]
-  
+
 * Motivation
 
 The default Emacs mode-line is functional but visually dated and hard to configure. =sleek-modeline= replaces it with a minimal, elegant alternative that surfaces the most relevant information while keeping the implementation small and straightforward.
@@ -32,6 +41,8 @@ The default Emacs mode-line is functional but visually dated and hard to configu
 + Line ending indicator (shown only for file-backed buffers).
 + Version control segment: branch name with icon and state-aware coloring.
 + Diagnostics segment: flycheck integration with error, warning and info counts.
++ Project name segment: supports =projectile= and the built-in =project.el=.
++ LSP indicator segment: supports =eglot= and =lsp-mode= backends.
 + Optional =nerd-icons= support throughout, with Unicode fallbacks when unavailable.
 + Adapts to theme changes automatically.
 
@@ -71,6 +82,7 @@ Clone the repo and load it:
   (require 'sleek-modeline)
   (sleek-modeline-mode 1)
 #+end_src
+
 * Customization
 
 All options live under =M-x customize-group RET sleek-modeline=. Here are the main ones:
@@ -82,26 +94,66 @@ All options live under =M-x customize-group RET sleek-modeline=. Here are the ma
 | =sleek-modeline-size=                           | =small=   | Mode-line height: =small=, =medium= or =large=.                            |
 | =sleek-modeline-height=                         | =nil=     | Custom box height in pixels. Overrides =sleek-modeline-size= when set. |
 | =sleek-modeline-show-icons=                     | =t=       | Show nerd-icons throughout. Requires =nerd-icons=.                     |
+| =sleek-modeline-background=                     | =nil=     | Custom mode-line background color. If nil, derives from =default= face. |
+| =sleek-modeline-edge-padding=                   | =2=       | Number of spaces added at the left and right edges.                  |
 | =sleek-modeline-highlight-modified-buffer-name= | =t=       | Highlight the buffer name when it has unsaved changes.               |
 | =sleek-modeline-show-modal-state=               | =nil=     | Show a modal editing state marker (=evil= / =meow=).                     |
 | =sleek-modeline-separator=                      | =" » "=   | Separator string between right-side segments.                        |
 
+** Inactive mode-line
+
+These options hide individual segments when the mode-line belongs to a non-selected window.
+
+| Variable                                  | Default | Description                                       |
+|-------------------------------------------+---------+---------------------------------------------------|
+| =sleek-modeline-hide-file-icon-inactive=    | =nil=   | Hide the file icon in inactive mode-lines.        |
+| =sleek-modeline-hide-major-mode-inactive=   | =nil=   | Hide the major mode name in inactive mode-lines.  |
+| =sleek-modeline-hide-line-ending-inactive=  | =nil=   | Hide the line ending style in inactive mode-lines.|
+| =sleek-modeline-hide-modal-inactive=        | =nil=   | Hide the modal state marker in inactive mode-lines.|
+
+** Segments
+
+Top-level switches for optional segments. Disabling one prevents its package from being loaded.
+
+| Variable                          | Default | Description                              |
+|-----------------------------------+---------+------------------------------------------|
+| =sleek-modeline-enable-diagnostics= | =t=     | Enable the diagnostics (Flycheck) segment. |
+| =sleek-modeline-enable-project=     | =t=     | Enable the project name segment.           |
+| =sleek-modeline-enable-lsp=         | =t=     | Enable the LSP indicator segment.          |
+
 ** Version Control
 
-| Variable                          | Default | Description                                              |
-|-----------------------------------+---------+----------------------------------------------------------|
-| =sleek-modeline-vc-show-icon=       | =t=       | Show a branch icon. Requires =nerd-icons=.                 |
-| =sleek-modeline-vc-use-github-icon= | =nil=     | Use the GitHub mark icon instead of the git branch icon. |
+| Variable                              | Default | Description                                                           |
+|---------------------------------------+---------+-----------------------------------------------------------------------|
+| =sleek-modeline-vc-show-icon=           | =t=     | Show a branch icon. Requires =nerd-icons=.                              |
+| =sleek-modeline-vc-use-github-icon=     | =nil=   | Use the GitHub mark icon instead of the git branch icon.              |
+| =sleek-modeline-vc-show-status-symbol=  | =t=     | Append a symbol indicating VC state: =~= modified, =+= added, =-= removed, =!= conflict, =↓= needs update, =?= unregistered. |
+| =sleek-modeline-hide-vc-icon-inactive=  | =nil=   | Hide the VC icon in inactive mode-lines.                              |
+| =sleek-modeline-hide-vc-branch-inactive=| =nil=   | Hide the VC branch name in inactive mode-lines.                       |
 
 ** Diagnostics
 
-| Variable                                    | Default   | Description                            |
-|---------------------------------------------+-----------+----------------------------------------|
-| =sleek-modeline-diagnostics-show-info=      | =t=       | Show info-level diagnostics.           |
-| =sleek-modeline-diagnostics-error-symbol=   | ="✕"=     | Symbol for errors.                     |
-| =sleek-modeline-diagnostics-warning-symbol= | ="▲"=     | Symbol for warnings.                   |
-| =sleek-modeline-diagnostics-info-symbol=    | ="●"=     | Symbol for info notes.                 |
-| =sleek-modeline-diagnostics-ok-symbol=      | =nil=     | Symbol shown when the buffer is clean. |
+| Variable                                    | Default | Description                            |
+|---------------------------------------------+---------+----------------------------------------|
+| =sleek-modeline-diagnostics-show-info=      | =t=     | Show info-level diagnostics.           |
+| =sleek-modeline-diagnostics-error-symbol=   | ="✕"=   | Symbol for errors.                     |
+| =sleek-modeline-diagnostics-warning-symbol= | ="▲"=   | Symbol for warnings.                   |
+| =sleek-modeline-diagnostics-info-symbol=    | ="●"=   | Symbol for info notes.                 |
+| =sleek-modeline-diagnostics-ok-symbol=      | =nil=   | Symbol shown when the buffer is clean. |
+
+** Project
+
+| Variable                                  | Default | Description                                    |
+|-------------------------------------------+---------+------------------------------------------------|
+| =sleek-modeline-hide-project-name-inactive= | =nil=   | Hide the project name in inactive mode-lines.  |
+
+** LSP
+
+| Variable                          | Default | Description                                                      |
+|-----------------------------------+---------+------------------------------------------------------------------|
+| =sleek-modeline-lsp-symbol=         | ="LSP"= | Fallback text when =nerd-icons= is unavailable or icons are off. |
+| =sleek-modeline-lsp-show-name=      | =nil=   | Show the LSP server name next to the icon.                       |
+| =sleek-modeline-hide-lsp-inactive=  | =nil=   | Hide the LSP indicator in inactive mode-lines.                   |
 
 ** Example configuration
 
