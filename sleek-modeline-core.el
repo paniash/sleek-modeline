@@ -305,15 +305,14 @@ ensuring the modeline is always visually distinct from buffer content."
     (_ "—")))
 
 (defun sleek-modeline-line-ending-indicator ()
-  "Return a propertized line ending string, or empty string for non-file buffers.
+  "Return a propertized line ending string for file-backed buffers, or nil.
 Dim or hide in inactive mode-lines according to configuration."
-  (if buffer-file-name
-      (sleek-modeline--maybe-dim-or-hide
-       (propertize (sleek-modeline--line-ending)
-                   'face 'sleek-modeline-line-ending-face
-                   'help-echo "Buffer line endings")
-       sleek-modeline-hide-line-ending-inactive)
-    ""))
+  (when buffer-file-name
+    (sleek-modeline--maybe-dim-or-hide
+     (propertize (sleek-modeline--line-ending)
+                 'face 'sleek-modeline-line-ending-face
+                 'help-echo "Buffer line endings")
+     sleek-modeline-hide-line-ending-inactive)))
 
 (defun sleek-modeline--separator ()
   "Return the propertized segment separator."
@@ -385,6 +384,28 @@ Returns C1 unchanged when either color cannot be parsed."
     (when (and shadow-fg bg)
       (set-face-attribute 'sleek-modeline-separator-face nil
                           :foreground (sleek-modeline--blend-colors shadow-fg bg 0.5)))))
+
+(sleek-modeline-register-segment 'modal-state
+  :fn 'sleek-modeline-modal-state-marker
+  :side 'left
+  :priority 0
+  :separator " ")
+
+(sleek-modeline-register-segment 'buffer-name
+  :fn 'sleek-modeline-buffer-name
+  :side 'left
+  :priority 20)
+
+(sleek-modeline-register-segment 'line-ending
+  :fn 'sleek-modeline-line-ending-indicator
+  :side 'right
+  :priority 10
+  :separator t)
+
+(sleek-modeline-register-segment 'major-mode
+  :fn 'sleek-modeline-major-mode
+  :side 'right
+  :priority 40)
 
 (provide 'sleek-modeline-core)
 ;;; sleek-modeline-core.el ends here
