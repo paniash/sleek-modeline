@@ -1,35 +1,32 @@
 #+title: sleek-modeline
 #+author: Abidán Brito Clavijo
 #+email: abidan.brito@gmail.com
-#+options: toc:2
 
-#+html: <div align="center">
-#+html: <a href="https://github.com/abidanBrito/sleek-modeline/actions/workflows/compile.yml"><img alt="compile" src="https://github.com/abidanBrito/sleek-modeline/actions/workflows/compile.yml/badge.svg"/></a>
-#+html: <a href="https://github.com/abidanBrito/sleek-modeline/actions/workflows/melpazoid.yml"><img alt="melpazoid" src="https://github.com/abidanBrito/sleek-modeline/actions/workflows/melpazoid.yml/badge.svg"/></a>
-#+html: <img alt="Emacs 29.1+" src="https://img.shields.io/badge/Emacs-29.1%2B-blueviolet.svg"/>
-#+html: <a href="https://github.com/abidanBrito/sleek-modeline"><img alt="status" src="https://img.shields.io/badge/status-WIP-red.svg"/></a>
-#+html: <a href="https://github.com/abidanBrito/sleek-modeline/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-brightgreen.svg"/></a>
+#+html: <div align="left">
+#+html: <a href="https://github.com/abidanBrito/sleek-modeline/actions/workflows/compile.yml"><img alt="Build" src="https://github.com/abidanBrito/sleek-modeline/actions/workflows/compile.yml/badge.svg"/></a>
+#+html: <a href="https://github.com/abidanBrito/sleek-modeline/actions/workflows/melpazoid.yml"><img alt="Melpazoid" src="https://github.com/abidanBrito/sleek-modeline/actions/workflows/melpazoid.yml/badge.svg"/></a>
+#+html: <img alt="GNU Emacs" src="https://img.shields.io/badge/GNU_Emacs-29.1%2B-blueviolet.svg"/>
+#+html: <a href="https://github.com/abidanBrito/sleek-modeline/blob/main/LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-orange.svg"/></a>
 #+html: </div>
+
+The default Emacs mode-line is functional but visually dated and hard to configure. =sleek-modeline= replaces it with a minimal, elegant alternative that surfaces the most relevant information while keeping the implementation small and straightforward.
+
+#+html: <img alt="Screenshot" src="assets/sleek_modeline_screenshot.png"/>
 
 * Table of Contents
 
-- [[#Motivation][Motivation]]
 - [[#Features][Features]]
 - [[#Installation][Installation]]
 - [[#Customization][Customization]]
   - [[#General][General]]
   - [[#Inactive-mode-line][Inactive mode-line]]
   - [[#Segments][Segments]]
-  - [[#Version-Control][Version Control]]
-  - [[#Diagnostics][Diagnostics]]
-  - [[#Project][Project]]
-  - [[#LSP][LSP]]
+    - [[#Version-Control][Version Control]]
+    - [[#Diagnostics][Diagnostics]]
+    - [[#Project][Project]]
+    - [[#LSP][LSP]]
 - [[#Contributing][Contributing]]
 - [[#License][License]]
-
-* Motivation
-
-The default Emacs mode-line is functional but visually dated and hard to configure. =sleek-modeline= replaces it with a minimal, elegant alternative that surfaces the most relevant information while keeping the implementation small and straightforward.
 
 * Features
 
@@ -40,9 +37,9 @@ The default Emacs mode-line is functional but visually dated and hard to configu
 + Modal editing state marker (=evil= and =meow= support).
 + Line ending indicator (shown only for file-backed buffers).
 + Version control segment: branch name with icon and state-aware coloring.
-+ Diagnostics segment: flycheck integration with error, warning and info counts.
-+ Project name segment: supports =projectile= and the built-in =project.el=.
-+ LSP indicator segment: supports =eglot= and =lsp-mode= backends.
++ Diagnostics segment: error, warning and info counts (support both =flycheck= and =flymake= integration).
++ Project name segment (supports both =projectile= and the built-in =project.el=).
++ LSP indicator segment (supports both =eglot= and =lsp-mode= backends).
 + Optional =nerd-icons= support throughout, with Unicode fallbacks when unavailable.
 + Adapts to theme changes automatically.
 
@@ -51,7 +48,11 @@ The default Emacs mode-line is functional but visually dated and hard to configu
 
 *** From source
 
-Clone the repo and point =use-package= at it:
+#+begin_src sh
+  git clone https://github.com/abidanBrito/sleek-modeline.git ~/path/to/sleek-modeline
+#+end_src
+
+Then point =use-package= at it:
 
 #+begin_src emacs-lisp
   (use-package sleek-modeline
@@ -74,7 +75,11 @@ Clone the repo and point =use-package= at it:
 
 ** Without =use-package=
 
-Clone the repo and load it:
+#+begin_src sh
+  git clone https://github.com/abidanBrito/sleek-modeline.git ~/path/to/sleek-modeline
+#+end_src
+
+Then load it:
 
 #+begin_src emacs-lisp
   (add-to-list 'load-path "~/path/to/sleek-modeline")
@@ -121,7 +126,7 @@ Top-level switches for optional segments. Disabling one prevents its package fro
 | =sleek-modeline-enable-project=     | =t=     | Enable the project name segment.           |
 | =sleek-modeline-enable-lsp=         | =t=     | Enable the LSP indicator segment.          |
 
-** Version Control
+*** Version Control
 
 | Variable                              | Default | Description                                                           |
 |---------------------------------------+---------+-----------------------------------------------------------------------|
@@ -131,7 +136,7 @@ Top-level switches for optional segments. Disabling one prevents its package fro
 | =sleek-modeline-hide-vc-icon-inactive=  | =nil=   | Hide the VC icon in inactive mode-lines.                              |
 | =sleek-modeline-hide-vc-branch-inactive=| =nil=   | Hide the VC branch name in inactive mode-lines.                       |
 
-** Diagnostics
+*** Diagnostics
 
 | Variable                                    | Default | Description                            |
 |---------------------------------------------+---------+----------------------------------------|
@@ -141,13 +146,13 @@ Top-level switches for optional segments. Disabling one prevents its package fro
 | =sleek-modeline-diagnostics-info-symbol=    | ="●"=   | Symbol for info notes.                 |
 | =sleek-modeline-diagnostics-ok-symbol=      | =nil=   | Symbol shown when the buffer is clean. |
 
-** Project
+*** Project
 
 | Variable                                  | Default | Description                                    |
 |-------------------------------------------+---------+------------------------------------------------|
 | =sleek-modeline-hide-project-name-inactive= | =nil=   | Hide the project name in inactive mode-lines.  |
 
-** LSP
+*** LSP
 
 | Variable                          | Default | Description                                                      |
 |-----------------------------------+---------+------------------------------------------------------------------|
@@ -177,7 +182,11 @@ Top-level switches for optional segments. Disabling one prevents its package fro
 
 Contributions are welcome. Please open an issue or pull request on [[https://github.com/abidanBrito/sleek-modeline][GitHub]].
 
-If you find a bug, include your Emacs version (=M-x emacs-version=), the =sleek-modeline= settings you're using and steps to reproduce.
+When reporting a bug, include:
+
+- Your Emacs version (=M-x emacs-version=).
+- Your =sleek-modeline= settings.
+- Steps to reproduce the issue.
 
 * License
 
