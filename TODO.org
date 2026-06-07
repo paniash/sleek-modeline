@@ -19,24 +19,27 @@
 ** DONE Segment registry [1/1] :core:
 - [X] Have segments auto-register.
 
-** DONE Miscellaneous [1/1] :misc:
+** TODO Miscellaneous [1/4] :misc:
 - [X] Global icon toggle.
+- [ ] Hide inactive modelines mode.
+- [ ] Set modeline in tabline instead.
+- [ ] List minor modes when clicking on the major mode segment.
 
 ** DONE CI checks [2/2] :ci:
 - [X] Add melpazoid workflow.
 - [X] Add compilation workflow.
 
-** TODO README.org :docs:
-- [ ] Description.
-- [ ] Screenshots.
-- [ ] Installation & quick-start guide.
-- [ ] Customization reference, etc.
-- [ ] Contributions & license.
+** DONE README.org :docs:
+- [X] Description.
+- [X] Screenshots.
+- [X] Installation & quick-start guide.
+- [X] Customization reference, etc.
+- [X] Contributions & license.
 
-** TODO MELPA submission [2/3] :release:
+** DONE MELPA submission [3/3] :release:
 - [X] Verify package headers and package requires.
 - [X] Ensure all files byte-compile cleanly.
-- [ ] Tag a versioned release.
+- [X] Tag a versioned release.
 
 
 * Segments
