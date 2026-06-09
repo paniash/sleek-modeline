@@ -20,6 +20,7 @@
   (declare-function flycheck-count-errors "flycheck")
   (declare-function flymake-diagnostics "flymake")
   (declare-function flymake-diagnostic-type "flymake")
+  (declare-function flymake--publish-diagnostics "flymake")
   (declare-function nerd-icons-codicon "nerd-icons")
   (defvar flycheck-mode)
   (defvar flycheck-current-errors)
@@ -163,21 +164,14 @@ is nil."
             (sleek-modeline-diagnostics--format errors warnings infos))))
   (force-mode-line-update))
 
-(defun sleek-modeline-diagnostics--flymake-setup ()
-  "Attach flymake hooks for the current buffer."
-  (add-hook 'flymake-after-syntax-check-functions
-            #'sleek-modeline-diagnostics--flymake-update nil t))
-
 (defun sleek-modeline-diagnostics--flymake-teardown ()
-  "Remove flymake hooks and clear cache for the current buffer."
-  (remove-hook 'flymake-after-syntax-check-functions
-               #'sleek-modeline-diagnostics--flymake-update t)
-  (setq sleek-modeline-diagnostics--cache nil))
+  "Clear flymake cache for the current buffer."
+  (setq sleek-modeline-diagnostics--cache nil)
+  (force-mode-line-update))
 
 (defun sleek-modeline-diagnostics--flymake-mode-hook ()
-  "Setup or tear down flymake integration based on `flymake-mode' state."
-  (if flymake-mode
-      (sleek-modeline-diagnostics--flymake-setup)
+  "Clear diagnostics cache when `flymake-mode' is disabled."
+  (unless flymake-mode
     (sleek-modeline-diagnostics--flymake-teardown)))
 
 (defun sleek-modeline-diagnostics ()
@@ -193,12 +187,16 @@ is integrated automatically in buffers where a checker activates.
 Call this once inside `sleek-modeline-mode' activation."
   (unless sleek-modeline-diagnostics--enabled
     (setq sleek-modeline-diagnostics--enabled t)
-    (when (featurep 'flycheck)
-      (add-hook 'flycheck-mode-hook
-                #'sleek-modeline-diagnostics--flycheck-mode-hook))
-    (when (featurep 'flymake)
-      (add-hook 'flymake-mode-hook
-                #'sleek-modeline-diagnostics--flymake-mode-hook))))
+    (with-eval-after-load 'flycheck
+      (when sleek-modeline-diagnostics--enabled
+        (add-hook 'flycheck-mode-hook
+                  #'sleek-modeline-diagnostics--flycheck-mode-hook)))
+    (with-eval-after-load 'flymake
+      (when sleek-modeline-diagnostics--enabled
+        (advice-add 'flymake--publish-diagnostics :after
+                    #'sleek-modeline-diagnostics--flymake-update)
+        (add-hook 'flymake-mode-hook
+                  #'sleek-modeline-diagnostics--flymake-mode-hook)))))
 
 (defun sleek-modeline-diagnostics-disable ()
   "Disable diagnostics segment integration.
@@ -211,6 +209,8 @@ This ensures no buffer-local hooks or cached state remain."
       (remove-hook 'flycheck-mode-hook
                    #'sleek-modeline-diagnostics--flycheck-mode-hook))
     (when (featurep 'flymake)
+      (advice-remove 'flymake--publish-diagnostics
+                     #'sleek-modeline-diagnostics--flymake-update)
       (remove-hook 'flymake-mode-hook
                    #'sleek-modeline-diagnostics--flymake-mode-hook))
     (dolist (buf (buffer-list))
