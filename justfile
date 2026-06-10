@@ -2,7 +2,7 @@
 
 pkg     := "sleek-modeline"
 emacs   := env_var_or_default("EMACS", "emacs")
-files   := "sleek-modeline-core.el sleek-modeline-vc.el sleek-modeline-diagnostics.el sleek-modeline-lsp.el sleek-modeline-project.el sleek-modeline.el"
+files	:= `find . -maxdepth 1 -name '*.el' ! -name '*-autoloads.el' | sort | tr '\n' ' '`
 batch   := emacs + " -Q --batch -L ."
 
 # Cache for lint dependencies
