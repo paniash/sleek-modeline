@@ -44,7 +44,7 @@ checkdoc:
     if [ "$status" -eq 0 ]; then echo "checkdoc: clean"; fi
     exit "$status"
 
-# Lint the main package file
+# Lint all .el files
 lint:
     @{{batch}} \
         --eval "(setq package-user-dir \"{{lint_dir}}\")" \
@@ -55,7 +55,8 @@ lint:
                   (package-refresh-contents) \
                   (package-install 'package-lint))" \
         --eval "(require 'package-lint)" \
-        -f package-lint-batch-and-exit {{pkg}}.el
+        --eval "(setq package-lint-main-file \"{{pkg}}.el\")" \
+        -f package-lint-batch-and-exit {{files}}
 
 # Wipe build artifacts & lint dependency cache
 clean:
