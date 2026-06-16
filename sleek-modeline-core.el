@@ -360,22 +360,24 @@ ensuring the modeline is always visually distinct from buffer content."
     (force-mode-line-update t)))
 
 (defun sleek-modeline--line-ending ()
-  "Return a string describing the buffer's line ending convention."
+  "Return (SHORT . LONG) descriptions of the buffer's line ending convention.
+SHORT is the compact segment label; LONG is the literal for the hover tooltip."
   (pcase (coding-system-eol-type buffer-file-coding-system)
-    (0 "LF")
-    (1 "CRLF")
-    (2 "CR")
-    (_ "-")))
+    (0 '("LF"   . "Unix (LF)"))
+    (1 '("CRLF" . "DOS (CRLF)"))
+    (2 '("CR"   . "Mac (CR)"))
+    (_ '("-"    . "unknown"))))
 
 (defun sleek-modeline-line-ending-indicator ()
   "Return a propertized line ending string for file-backed buffers, or nil.
 Dim or hide in inactive mode-lines according to configuration."
   (when buffer-file-name
-    (sleek-modeline--maybe-dim-or-hide
-     (propertize (sleek-modeline--line-ending)
-                 'face 'sleek-modeline-line-ending-face
-                 'help-echo "Buffer line endings")
-     sleek-modeline-hide-line-ending-inactive)))
+    (let ((style (sleek-modeline--line-ending)))
+      (sleek-modeline--maybe-dim-or-hide
+       (propertize (car style)
+                   'face 'sleek-modeline-line-ending-face
+                   'help-echo (concat "Line endings: " (cdr style)))
+       sleek-modeline-hide-line-ending-inactive))))
 
 (defun sleek-modeline--separator ()
   "Return the propertized segment separator."
