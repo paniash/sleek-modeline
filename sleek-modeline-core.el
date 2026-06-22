@@ -143,9 +143,16 @@ ensuring the modeline is always visually distinct from buffer content."
   (not (mode-line-window-selected-p)))
 
 (defun sleek-modeline--dim (str)
-  "Return STR with an inactive/dimmed face."
-  (propertize str 'face 'mode-line-inactive))
-;;(add-face-text-property 0 (length str) 'mode-line-inactive 'append str))
+  "Return a copy of STR dimmed for an inactive mode-line.
+Only the foreground colour is overlaid (with the `mode-line-inactive'
+foreground).  The segment's own weight, slant, and size are preserved so that
+it keeps the same width whether or not its window is selected."
+  (let ((dimmed (copy-sequence str)))
+    (add-face-text-property 0 (length dimmed)
+                            (list :foreground
+                                  (face-foreground 'mode-line-inactive nil t))
+                            nil dimmed)
+    dimmed))
 
 (defun sleek-modeline--dim-background (face)
   "Return a dimmed version of FACE by blending its background."

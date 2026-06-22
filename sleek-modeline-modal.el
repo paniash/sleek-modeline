@@ -69,17 +69,23 @@ Checks `evil-mode' first, then `meow-mode'.  Returns nil if neither is active."
      (t nil))))
 
 (defun sleek-modeline-modal-state-marker ()
-  "Return a propertized, modal state marker with state-dependent background."
+  "Return a propertized, modal state marker with state-dependent background.
+In inactive mode-lines, dim the badge background (keeping the foreground),
+or hide it entirely when `sleek-modeline-hide-modal-inactive' is non-nil."
   (when-let ((state (sleek-modeline--modal-state)))
-    (let* ((base-face (pcase state
-                        ("N" 'sleek-modeline-modal-normal-face)
-                        ("I" 'sleek-modeline-modal-insert-face)
-                        ("V" 'sleek-modeline-modal-visual-face)
-                        (_   'sleek-modeline-modal-other-face)))
-           (face (if (sleek-modeline--inactive-p)
-                     (sleek-modeline--dim-background base-face)
-                   base-face)))
-      (propertize (format " %s " state) 'face face))))
+    (let ((inactive (sleek-modeline--inactive-p)))
+      (unless (and inactive sleek-modeline-hide-modal-inactive)
+        (let* ((base-face (pcase state
+                            ("N" 'sleek-modeline-modal-normal-face)
+                            ("I" 'sleek-modeline-modal-insert-face)
+                            ("V" 'sleek-modeline-modal-visual-face)
+                            (_   'sleek-modeline-modal-other-face)))
+               (face (if inactive
+                         (list :inherit base-face
+                               :background (face-foreground
+                                            'mode-line-inactive nil t))
+                       base-face)))
+          (propertize (format " %s " state) 'face face))))))
 
 (sleek-modeline-register-segment 'modal-state
 				 :fn 'sleek-modeline-modal-state-marker
