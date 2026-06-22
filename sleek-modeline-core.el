@@ -13,9 +13,6 @@
 (require 'color)
 (require 'cl-lib)
 
-;; NOTE(abi): optional dependency; only gets loaded if available.
-(declare-function nerd-icons-icon-for-file "nerd-icons")
-
 (defvar sleek-modeline--segment-registry nil
   "List of registered segment descriptors (plists).
 Each entry is a plist with keys.
@@ -28,12 +25,6 @@ Each entry is a plist with keys.
   :condition  symbol - Variable that must be non-nil to display the segment.
   :on-enable  symbol - Function called when `sleek-modeline-mode' activates.
   :on-disable symbol - Function called when `sleek-modeline-mode' deactivates.")
-
-(defvar sleek-modeline--major-mode-keymap
-  (let ((map (make-sparse-keymap)))
-    (define-key map [mode-line down-mouse-1] #'sleek-modeline--minor-modes-menu)
-    map)
-  "Keymap active on the major mode segment of `sleek-modeline'.")
 
 (defun sleek-modeline-register-segment (name &rest props)
   "Register a segment under NAME with the given PROPS plist.
@@ -89,57 +80,10 @@ Requires `nerd-icons' package to be installed."
   :type 'boolean
   :group 'sleek-modeline)
 
-(defcustom sleek-modeline-highlight-modified-buffer-name t
-  "Whether to highlight the buffer name when it has unsaved changes.
-When non-nil, modified buffers will use
-`sleek-modeline-buffer-name-modified-face'."
-  :type 'boolean
-  :group 'sleek-modeline)
-
-(defcustom sleek-modeline-show-modal-state nil
-  "Whether to show modal editing state (Evil/Meow) marker."
-  :type 'boolean
-  :group 'sleek-modeline)
-
-(defcustom sleek-modeline-hide-modal-inactive nil
-  "Hide modal state marker in inactive modelines."
-  :type 'boolean
-  :group 'sleek-modeline)
-
 (defcustom sleek-modeline-separator " » "
   "Separator string used between segments in the mode-line."
   :type 'string
   :group 'sleek-modeline)
-
-(defface sleek-modeline-buffer-name-face
-  '((t (:inherit mode-line-buffer-id :weight bold)))
-  "Face for buffer name in `sleek-modeline'."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-buffer-name-highlight-face
-  '((t (:inherit sleek-modeline-buffer-name-face :underline t)))
-  "Face used to highlight the buffer name segment on mouse hover."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-buffer-name-modified-face
-  '((t (:inherit warning :weight bold)))
-  "Face for modified buffer name in `sleek-modeline'."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-buffer-name-modified-highlight-face
-  '((t (:inherit sleek-modeline-buffer-name-modified-face :underline t)))
-  "Face used to highlight a modified buffer name on mouse hover."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-major-mode-face
-  '((t (:inherit font-lock-function-name-face :weight bold :slant normal)))
-  "Face for major mode in `sleek-modeline'."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-major-mode-highlight-face
-  '((t (:inherit sleek-modeline-major-mode-face :underline t)))
-  "Face used to highlight the major mode segment on mouse hover."
-  :group 'sleek-modeline-faces)
 
 (defcustom sleek-modeline-background nil
   "Custom background for the mode-line.
@@ -148,179 +92,10 @@ If nil, derives from `default` face."
                  color)
   :group 'sleek-modeline)
 
-(defcustom sleek-modeline-hide-file-icon-inactive nil
-  "Hide the file icon in inactive modelines."
-  :type 'boolean
-  :group 'sleek-modeline)
-
-(defcustom sleek-modeline-hide-major-mode-inactive nil
-  "Hide the major mode name in inactive modelines."
-  :type 'boolean
-  :group 'sleek-modeline)
-
-(defcustom sleek-modeline-hide-line-ending-inactive nil
-  "Hide the line ending style in inactive modelines."
-  :type 'boolean
-  :group 'sleek-modeline)
-
-(defface sleek-modeline-modal-normal-face
-  '((t (:weight bold :foreground "#1e1e2e" :background "#89b4fa")))
-  "Face for normal modal state." :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-modal-insert-face
-  '((t (:weight bold :foreground "#1e1e2e" :background "#a6e3a1")))
-  "Face for insert modal state." :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-modal-visual-face
-  '((t (:weight bold :foreground "#1e1e2e" :background "#cba6f7")))
-  "Face for visual modal state." :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-modal-other-face
-  '((t (:weight bold :foreground "#1e1e2e" :background "#f38ba8")))
-  "Face for other modal states." :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-vc-face
-  '((t (:weight bold)))
-  "Face for the branch icon and branch name in `sleek-modeline'.
-Static — does not change with VC state; foreground falls through to mode-line."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-vc-modified-face
-  '((t (:inherit font-lock-warning-face :weight bold :slant italic)))
-  "Face for version control info when there are modifications.
-Used for edited, added, or needs-update states."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-vc-conflict-face
-  '((t (:inherit error)))
-  "Face for version control info when there are conflicts.
-Used for removed, conflict, unregistered, or needs-merge states."
-  :group 'sleek-modeline-faces)
-
-(defface sleek-modeline-line-ending-face
-  '((t (:inherit font-lock-doc-face :slant normal)))
-  "Face for the line ending indicator in `sleek-modeline'."
-  :group 'sleek-modeline-faces)
-
 (defface sleek-modeline-separator-face
   '((t (:inherit shadow)))
   "Face for the separator between segments in `sleek-modeline'."
   :group 'sleek-modeline-faces)
-
-(defun sleek-modeline-buffer-name ()
-  "Show buffer name with custom face and optional icon (if available).
-Change color when buffer is modified and dim or hide components when
-the mode-line is inactive according to configuration."
-  (let* ((file-name (buffer-file-name))
-         (icon (when (and sleek-modeline-show-icons
-                          file-name
-                          (featurep 'nerd-icons))
-                 (nerd-icons-icon-for-file file-name)))
-         (buffer-name (substring-no-properties (format-mode-line "%b")))
-         (modified (and sleek-modeline-highlight-modified-buffer-name
-                        (buffer-modified-p)))
-         (face (if modified
-                   'sleek-modeline-buffer-name-modified-face
-                 'sleek-modeline-buffer-name-face))
-         (highlight-face (if modified
-                             'sleek-modeline-buffer-name-modified-highlight-face
-                           'sleek-modeline-buffer-name-highlight-face))
-         (icon (sleek-modeline--maybe-dim-or-hide
-                icon
-                sleek-modeline-hide-file-icon-inactive))
-         (buffer-name (sleek-modeline--maybe-dim-or-hide
-                       (propertize buffer-name
-                                   'face face
-                                   'mouse-face highlight-face
-                                   'help-echo (if file-name
-                                                  (abbreviate-file-name file-name)
-                                                "Buffer is not associated to a file"))
-                       nil)))
-    (if icon (concat icon " " buffer-name) buffer-name)))
-
-(defun sleek-modeline--active-minor-modes ()
-  "Return the list of active minor modes in the current buffer."
-  (let (modes)
-    (dolist (mode minor-mode-list)
-      (when (and (boundp mode) (symbol-value mode))
-        (push mode modes)))
-    (nreverse modes)))
-
-(defun sleek-modeline--minor-modes-menu (event)
-  "Pop up a menu of the active minor modes at the mouse EVENT.
-Selecting an entry describes that minor mode."
-  (interactive "@e")
-  (let ((modes (sleek-modeline--active-minor-modes))
-        (map (make-sparse-keymap "Active minor modes")))
-    (if (null modes)
-        (message "No active minor modes")
-      ;; NOTE(abi): `define-key' prepends, so we walk the list in reverse.
-      (dolist (mode (reverse modes))
-        (define-key map (vector mode)
-		    `(menu-item ,(symbol-name mode)
-				(lambda ()
-				  (interactive)
-				  (describe-minor-mode-from-symbol ',mode)))))
-      (popup-menu map event))))
-
-(defun sleek-modeline-major-mode ()
-  "Show major mode with custom face, stripping mode-line suffix indicators.
-Clicking the segment pops up a menu of the active minor modes.
-Optionally dim or hide in inactive mode-lines."
-  (let ((name (replace-regexp-in-string
-               "/.*\\'" ""
-               (substring-no-properties (format-mode-line mode-name)))))
-    (sleek-modeline--maybe-dim-or-hide
-     (propertize name
-                 'face 'sleek-modeline-major-mode-face
-                 'mouse-face 'sleek-modeline-major-mode-highlight-face
-                 'help-echo (concat (propertize "mouse-1" 'face
-                                                'sleek-modeline-major-mode-face)
-                                    ": list active minor modes")
-                 'local-map sleek-modeline--major-mode-keymap)
-     sleek-modeline-hide-major-mode-inactive)))
-
-(defun sleek-modeline--modal-state ()
-  "Return the current modal editing state as a single letter, or nil.
-Checks `evil-mode' first, then `meow-mode'.  Returns nil if neither is active."
-  (when sleek-modeline-show-modal-state
-    (cond
-     ((and (featurep 'evil)
-           (bound-and-true-p evil-local-mode)
-           (boundp 'evil-state))
-      (pcase evil-state
-        ('normal "N")
-        ('insert "I")
-        ('visual "V")
-        ('replace "R")
-        ('operator "O")
-        ('motion "M")
-        ('emacs "E")
-        (_ "?")))
-     ((and (featurep 'meow)
-           (bound-and-true-p meow-mode)
-           (boundp 'meow--current-state))
-      (pcase meow--current-state
-        ('normal "N")
-        ('insert "I")
-        ('keypad "K")
-        ('motion "M")
-        ('beacon "B")
-        (_ "?")))
-     (t nil))))
-
-(defun sleek-modeline-modal-state-marker ()
-  "Return a propertized, modal state marker with state-dependent background."
-  (when-let ((state (sleek-modeline--modal-state)))
-    (let* ((base-face (pcase state
-                        ("N" 'sleek-modeline-modal-normal-face)
-                        ("I" 'sleek-modeline-modal-insert-face)
-                        ("V" 'sleek-modeline-modal-visual-face)
-                        (_   'sleek-modeline-modal-other-face)))
-           (face (if (sleek-modeline--inactive-p)
-                     (sleek-modeline--dim-background base-face)
-                   base-face)))
-      (propertize (format " %s " state) 'face face))))
 
 (defun sleek-modeline--get-height ()
   "Get mode-line height based on `sleek-modeline-size' or `sleek-modeline-height'.
@@ -359,26 +134,6 @@ ensuring the modeline is always visually distinct from buffer content."
     (sleek-modeline--update-separator-face)
     (force-mode-line-update t)))
 
-(defun sleek-modeline--line-ending ()
-  "Return (SHORT . LONG) descriptions of the buffer's line ending convention.
-SHORT is the compact segment label; LONG is the literal for the hover tooltip."
-  (pcase (coding-system-eol-type buffer-file-coding-system)
-    (0 '("LF"   . "Unix (LF)"))
-    (1 '("CRLF" . "DOS (CRLF)"))
-    (2 '("CR"   . "Mac (CR)"))
-    (_ '("-"    . "unknown"))))
-
-(defun sleek-modeline-line-ending-indicator ()
-  "Return a propertized line ending string for file-backed buffers, or nil.
-Dim or hide in inactive mode-lines according to configuration."
-  (when buffer-file-name
-    (let ((style (sleek-modeline--line-ending)))
-      (sleek-modeline--maybe-dim-or-hide
-       (propertize (car style)
-                   'face 'sleek-modeline-line-ending-face
-                   'help-echo (concat "Line endings: " (cdr style)))
-       sleek-modeline-hide-line-ending-inactive))))
-
 (defun sleek-modeline--separator ()
   "Return the propertized segment separator."
   (propertize sleek-modeline-separator 'face 'sleek-modeline-separator-face))
@@ -388,9 +143,16 @@ Dim or hide in inactive mode-lines according to configuration."
   (not (mode-line-window-selected-p)))
 
 (defun sleek-modeline--dim (str)
-  "Return STR with an inactive/dimmed face."
-  (propertize str 'face 'mode-line-inactive))
-;;(add-face-text-property 0 (length str) 'mode-line-inactive 'append str))
+  "Return a copy of STR dimmed for an inactive mode-line.
+Only the foreground colour is overlaid (with the `mode-line-inactive'
+foreground).  The segment's own weight, slant, and size are preserved so that
+it keeps the same width whether or not its window is selected."
+  (let ((dimmed (copy-sequence str)))
+    (add-face-text-property 0 (length dimmed)
+                            (list :foreground
+                                  (face-foreground 'mode-line-inactive nil t))
+                            nil dimmed)
+    dimmed))
 
 (defun sleek-modeline--dim-background (face)
   "Return a dimmed version of FACE by blending its background."
@@ -449,28 +211,6 @@ Returns C1 unchanged when either color cannot be parsed."
     (when (and shadow-fg bg)
       (set-face-attribute 'sleek-modeline-separator-face nil
                           :foreground (sleek-modeline--blend-colors shadow-fg bg 0.5)))))
-
-(sleek-modeline-register-segment 'modal-state
-				 :fn 'sleek-modeline-modal-state-marker
-				 :side 'left
-				 :priority 0
-				 :separator " ")
-
-(sleek-modeline-register-segment 'buffer-name
-				 :fn 'sleek-modeline-buffer-name
-				 :side 'left
-				 :priority 20)
-
-(sleek-modeline-register-segment 'line-ending
-				 :fn 'sleek-modeline-line-ending-indicator
-				 :side 'right
-				 :priority 10
-				 :separator t)
-
-(sleek-modeline-register-segment 'major-mode
-				 :fn 'sleek-modeline-major-mode
-				 :side 'right
-				 :priority 40)
 
 (provide 'sleek-modeline-core)
 ;;; sleek-modeline-core.el ends here

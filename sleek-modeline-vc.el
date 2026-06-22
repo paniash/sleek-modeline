@@ -48,6 +48,24 @@ When non-nil, appends a symbol: `~' modified, `+' added, `-' removed,
   :type 'boolean
   :group 'sleek-modeline)
 
+(defface sleek-modeline-vc-face
+  '((t (:weight bold)))
+  "Face for the branch icon and branch name in `sleek-modeline'.
+Static - does not change with VC state; foreground falls through to mode-line."
+  :group 'sleek-modeline-faces)
+
+(defface sleek-modeline-vc-modified-face
+  '((t (:inherit font-lock-warning-face :weight bold :slant italic)))
+  "Face for version control info when there are modifications.
+Used for edited, added, or needs-update states."
+  :group 'sleek-modeline-faces)
+
+(defface sleek-modeline-vc-conflict-face
+  '((t (:inherit error)))
+  "Face for version control info when there are conflicts.
+Used for removed, conflict, unregistered, or needs-merge states."
+  :group 'sleek-modeline-faces)
+
 (defvar sleek-modeline-vc--enabled nil
   "Non-nil means vc segment hooks are installed globally.")
 
@@ -124,7 +142,10 @@ Returns nil if not in a version-controlled file."
                  ((eq state 'needs-update) "↓")
                  ((eq state 'unregistered) "?"))))
       (when sym
-        (propertize sym 'face (sleek-modeline-vc--state-face))))))
+        (let ((face (sleek-modeline-vc--state-face)))
+          (propertize sym
+                      'face face
+                      'mouse-face (list :inherit face :underline t)))))))
 
 (defun sleek-modeline-vc--git-ahead-behind ()
   "Return (BEHIND . AHEAD) commit counts versus the upstream branch, or nil.
@@ -149,7 +170,8 @@ Shows the VC backend and, for Git, the commit counts relative to the
 upstream branch."
   (with-current-buffer (window-buffer window)
     (when-let ((backend (and buffer-file-name (vc-backend buffer-file-name))))
-      (let ((name (symbol-name backend)))
+      (let ((name (propertize (symbol-name backend)
+                              'face 'sleek-modeline-vc-face)))
         (if (not (eq backend 'Git)) name
           (let ((ab (sleek-modeline-vc--git-ahead-behind)))
             (cond
@@ -166,7 +188,10 @@ Returns nil if not in a version-controlled file or if an error occurs."
   (condition-case nil
       (when-let ((branch (sleek-modeline-vc--branch-name)))
         (let* ((symbol (sleek-modeline-vc--status-symbol))
-               (branch-str (propertize branch 'face 'sleek-modeline-vc-face))
+               (branch-str (propertize branch
+                                       'face 'sleek-modeline-vc-face
+                                       'mouse-face '(:inherit sleek-modeline-vc-face
+                                                     :underline t)))
                (icon (let ((raw (sleek-modeline-vc--branch-icon)))
                        (when raw
                          (let ((fg (face-foreground 'mode-line nil t)))

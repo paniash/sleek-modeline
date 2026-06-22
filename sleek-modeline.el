@@ -16,6 +16,10 @@
 ;;; Code:
 
 (require 'sleek-modeline-core)
+(require 'sleek-modeline-buffer)
+(require 'sleek-modeline-major-mode)
+(require 'sleek-modeline-modal)
+(require 'sleek-modeline-line-ending)
 (require 'sleek-modeline-vc)
 
 
