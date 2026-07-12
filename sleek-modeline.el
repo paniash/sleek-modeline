@@ -229,6 +229,11 @@ we read `(face-background \='default ...)'."
 	(when sleek-modeline-suppress-default-mouse
 	  (sleek-modeline--suppress-default-mouse))
 
+	;; Hide the mode-line in user-listed major modes
+	(add-hook 'after-change-major-mode-hook
+		  #'sleek-modeline--apply-disabled-mode)
+	(sleek-modeline--refresh-disabled-modes)
+
 	;; Update faces after a theme change
         (add-hook 'after-load-theme-hook #'sleek-modeline--update-faces)
         (advice-add 'load-theme :after #'sleek-modeline--after-theme-change)
@@ -257,6 +262,10 @@ we read `(face-background \='default ...)'."
 
     ;; Restore original format, faces & mouse behaviour
     (setq-default mode-line-format sleek-modeline--default-mode-line)
+
+    (remove-hook 'after-change-major-mode-hook
+                 #'sleek-modeline--apply-disabled-mode)
+    (sleek-modeline--restore-disabled-modes)
 
     (sleek-modeline--restore-default-mouse)
 
