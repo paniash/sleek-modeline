@@ -297,5 +297,23 @@ we read `(face-background \='default ...)'."
 
   (force-mode-line-update t))
 
+;;;###autoload
+(defun sleek-modeline-refresh ()
+  "Rebuild the mode-line from the segment registry.
+Recompute `sleek-modeline-format' and reapply it so that segments
+registered, removed, or reprioritised since `sleek-modeline-mode' was
+enabled take effect without having to toggle the mode off and on.
+
+Note that this only recomputes the format; a segment that installs
+hooks through its `:on-enable' handler must still be wired up by enabling
+the mode.  Does nothing unless `sleek-modeline-mode' is active."
+  (interactive)
+  (if (not sleek-modeline-mode)
+      (when (called-interactively-p 'interactive)
+        (message "sleek-modeline-mode is not enabled"))
+    (sleek-modeline--build-format)
+    (setq-default mode-line-format sleek-modeline-format)
+    (force-mode-line-update t)))
+
 (provide 'sleek-modeline)
 ;;; sleek-modeline.el ends here
