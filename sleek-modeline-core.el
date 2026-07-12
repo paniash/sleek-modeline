@@ -35,6 +35,9 @@ See `sleek-modeline--segment-registry' for valid keys."
               (seq-remove (lambda (s) (eq (plist-get s :name) name))
                           sleek-modeline--segment-registry))))
 
+(defvar-local sleek-modeline--modeline-hidden nil
+  "Non-nil when `sleek-modeline' hid the mode-line in the current buffer.")
+
 (defgroup sleek-modeline nil
   "Customization group for `sleek-modeline'."
   :group 'mode-line
@@ -92,6 +95,31 @@ If nil, derives from `default` face."
                  color)
   :group 'sleek-modeline)
 
+(defcustom sleek-modeline-hide-inactive nil
+  "Whether to hide/blank the mode-line on unselected windows.
+When non-nil, all segment are hidden and the bar blends into the buffer's
+background on non-selected windows.  The bar keeps its height, so changing
+focus never shifts the window layout."
+  :type 'boolean
+  :group 'sleek-modeline
+  :set (lambda (symbol value)
+         (set-default symbol value)
+         (when (and (boundp 'sleek-modeline-mode)
+                    sleek-modeline-mode)
+           (sleek-modeline--update-faces))))
+
+(defcustom sleek-modeline-disabled-modes nil
+  "List of major modes for which the mode-line is hidden entirely.
+When the current buffer's major mode is, or derives from, any mode in
+this list, `sleek-modeline' removes the mode-line for that buffer."
+  :type '(repeat symbol)
+  :group 'sleek-modeline
+  :set (lambda (symbol value)
+         (set-default symbol value)
+         (when (and (boundp 'sleek-modeline-mode)
+                    sleek-modeline-mode)
+           (sleek-modeline--refresh-disabled-modes))))
+
 (defface sleek-modeline-separator-face
   '((t (:inherit shadow)))
   "Face for the separator between segments in `sleek-modeline'."
@@ -120,7 +148,9 @@ ensuring the modeline is always visually distinct from buffer content."
                                  raw-background
                                "#000000"))
          (modeline-background (sleek-modeline--darken default-background 0.30))
-         (modeline-inactive-background (sleek-modeline--darken default-background 0.15)))
+         (modeline-inactive-background (if sleek-modeline-hide-inactive
+                                           default-background
+                                         (sleek-modeline--darken default-background 0.15))))
     (when (facep 'mode-line)
       (set-face-attribute 'mode-line nil
                           :background modeline-background
@@ -141,6 +171,40 @@ ensuring the modeline is always visually distinct from buffer content."
 (defun sleek-modeline--inactive-p ()
   "Return non-nil if the current mode-line is inactive."
   (not (mode-line-window-selected-p)))
+
+(defun sleek-modeline--hide-inactive-p ()
+  "Return non-nil when the current window's mode-line should be hidden/blanked."
+  (and sleek-modeline-hide-inactive (sleek-modeline--inactive-p)))
+
+(defun sleek-modeline--apply-disabled-mode ()
+  "Hide or restore the mode-line in the current buffer.
+Buffers whose major mode matches `sleek-modeline-disabled-modes' get a
+buffer-local nil `mode-line-format'.  Buffers previously hid have it
+removed so they fall back to the global format."
+  (cond
+   ((and sleek-modeline-disabled-modes
+         (apply #'derived-mode-p sleek-modeline-disabled-modes))
+    (setq-local mode-line-format nil)
+    (setq sleek-modeline--modeline-hidden t))
+   (sleek-modeline--modeline-hidden
+    (kill-local-variable 'mode-line-format)
+    (setq sleek-modeline--modeline-hidden nil))))
+
+(defun sleek-modeline--refresh-disabled-modes ()
+  "Re-evaluate `sleek-modeline-disabled-modes' across all live buffers."
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (sleek-modeline--apply-disabled-mode)))
+  (force-mode-line-update t))
+
+(defun sleek-modeline--restore-disabled-modes ()
+  "Restore the mode-line in every buffer `sleek-modeline' hid."
+  (dolist (buffer (buffer-list))
+    (with-current-buffer buffer
+      (when sleek-modeline--modeline-hidden
+        (kill-local-variable 'mode-line-format)
+        (setq sleek-modeline--modeline-hidden nil))))
+  (force-mode-line-update t))
 
 (defun sleek-modeline--dim (str)
   "Return a copy of STR dimmed for an inactive mode-line.

@@ -142,7 +142,6 @@ The value is read from a hook-driven cache; no work is done on redraw."
      sleek-modeline-lsp--cache
      sleek-modeline-hide-lsp-inactive)))
 
-;;;###autoload
 (defun sleek-modeline-lsp-enable ()
   "Enable LSP segment wiring.
 Attaches to `eglot' and `lsp-mode' hooks so that LSP activity is

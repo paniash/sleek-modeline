@@ -209,7 +209,6 @@ Returns nil if not in a version-controlled file or if an error occurs."
            sleek-modeline-hide-vc-branch-inactive)))
     (error nil)))
 
-;;;###autoload
 (defun sleek-modeline-vc-enable ()
   "Enable vc segment hook wiring for cache invalidation.
 Call this once inside `sleek-modeline-mode' activation."

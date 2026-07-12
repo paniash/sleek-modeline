@@ -25,6 +25,8 @@ The default Emacs mode-line is functional but visually dated and hard to configu
     - [[#Diagnostics][Diagnostics]]
     - [[#Project][Project]]
     - [[#LSP][LSP]]
+- [[#Interactions][Interactions]]
+- [[#Extending][Extending]]
 - [[#Contributing][Contributing]]
 - [[#License][License]]
 
@@ -41,27 +43,37 @@ The default Emacs mode-line is functional but visually dated and hard to configu
 + Project name segment (supports both =projectile= and the built-in =project.el=).
 + LSP indicator segment (supports both =eglot= and =lsp-mode= backends).
 + Optional =nerd-icons= support throughout, with Unicode fallbacks when unavailable.
++ Optionally blank the mode-line on inactive windows, or hide it entirely in chosen major modes.
 + Adapts to theme changes automatically.
 
 * Installation
-** With =use-package=
 
-*** From source
+=sleek-modeline= is available on [[https://melpa.org/#/sleek-modeline][MELPA]]. With MELPA in your =package-archives=, install it with =M-x package-install RET sleek-modeline RET=, or use one of the declarative recipes below.
 
-#+begin_src sh
-  git clone https://github.com/abidanBrito/sleek-modeline.git ~/path/to/sleek-modeline
-#+end_src
-
-Then point =use-package= at it:
+** From MELPA
 
 #+begin_src emacs-lisp
   (use-package sleek-modeline
-    :load-path "~/path/to/sleek-modeline"
+    :ensure t
     :config
     (sleek-modeline-mode 1))
 #+end_src
 
-*** From GitHub using =straight.el=
+** From Git
+
+Using =use-package='s built-in =:vc= keyword (Emacs 30.1+):
+
+#+begin_src emacs-lisp
+  (use-package sleek-modeline
+    :vc (:url "https://github.com/abidanBrito/sleek-modeline"
+         :branch "main")
+    :config
+    (sleek-modeline-mode 1))
+#+end_src
+
+On Emacs 29, fetch the same recipe with =M-x package-vc-install RET https://github.com/abidanBrito/sleek-modeline RET=.
+
+Or with [[https://github.com/radian-software/straight.el][=straight.el=]]:
 
 #+begin_src emacs-lisp
   (use-package sleek-modeline
@@ -73,13 +85,22 @@ Then point =use-package= at it:
     (sleek-modeline-mode 1))
 #+end_src
 
-** Without =use-package=
+** From source
 
 #+begin_src sh
   git clone https://github.com/abidanBrito/sleek-modeline.git ~/path/to/sleek-modeline
 #+end_src
 
-Then load it:
+With =use-package=:
+
+#+begin_src emacs-lisp
+  (use-package sleek-modeline
+    :load-path "~/path/to/sleek-modeline"
+    :config
+    (sleek-modeline-mode 1))
+#+end_src
+
+Or without =use-package=:
 
 #+begin_src emacs-lisp
   (add-to-list 'load-path "~/path/to/sleek-modeline")
@@ -104,10 +125,18 @@ All options live under =M-x customize-group RET sleek-modeline=. Here are the ma
 | =sleek-modeline-highlight-modified-buffer-name= | =t=       | Highlight the buffer name when it has unsaved changes.               |
 | =sleek-modeline-show-modal-state=               | =nil=     | Show a modal editing state marker (=evil= / =meow=).                     |
 | =sleek-modeline-separator=                      | =" » "=   | Separator string between right-side segments.                        |
+| =sleek-modeline-suppress-default-mouse=         | =t=       | Disable Emacs' stock mode-line mouse actions and echo-area hints, keeping only the segment bindings sleek-modeline adds. |
+| =sleek-modeline-disabled-modes=                 | =nil=     | List of major modes for which the mode-line is hidden. Matches with =derived-mode-p=, so descendant modes are also covered.  |
 
 ** Inactive mode-line
 
-These options hide individual segments when the mode-line belongs to a non-selected window.
+=sleek-modeline-hide-inactive= is the master switch: when non-nil, every segment is blanked on non-selected windows and the bar blends into the buffer background. The bar keeps its height, so that changing focus never shifts the window layout.
+
+| Variable                        | Default | Description                                                        |
+|---------------------------------+---------+--------------------------------------------------------------------|
+| =sleek-modeline-hide-inactive=    | =nil=   | Blank the entire mode-line on non-selected windows.                |
+
+The options below instead hide *individual* segments when the mode-line belongs to a non-selected window.
 
 | Variable                                  | Default | Description                                       |
 |-------------------------------------------+---------+---------------------------------------------------|
@@ -174,9 +203,60 @@ Top-level switches for optional segments. Disabling one prevents its package fro
     (sleek-modeline-separator " | ")
     (sleek-modeline-vc-use-github-icon nil)
     (sleek-modeline-diagnostics-ok-symbol "✓")
+    (sleek-modeline-disabled-modes '(dired-mode vterm-mode help-mode))
     :config
     (sleek-modeline-mode 1))
 #+end_src
+
+* Interactions
+
+Several segments respond to the mouse. Hovering shows a short tooltip in the echo area. A couple also react to clicks.
+
+| Segment         | Hover shows                                                              | Click                                                   |
+|-----------------+-------------------------------------------------------------------------+---------------------------------------------------------|
+| Buffer name     | The file path, or a note when the buffer is not file-backed.            | N/A                                                     |
+| Major mode      | A hint to list minor modes.                                             | =mouse-1= pops up a menu of active minor modes, and selecting one describes it. |
+| Version control | The VC backend and, for Git, commits behind/ahead of the upstream.         | N/A                                                     |
+| Project         | The project backend and its root directory.                            | N/A                                                    |
+| Line ending     | The line-ending convention.                                            | N/A                                                     |
+| LSP             | The active LSP server name.                                            | N/A                                                     |
+
+Dragging the mode-line with =mouse-1= resizes the window, just as in stock Emacs. Setting =sleek-modeline-suppress-default-mouse= to =t= (the default) disables Emacs' other built-in mode-line mouse actions and their echo-area hints, but leaves the segment tooltips and drag-to-resize intact.
+
+* Extending
+
+Segments are self-registering: each built-in segment calls =sleek-modeline-register-segment= at load time, and you can register your own the same way.
+
+*/NOTE:/* a segment is a function that returns a (propertized) string or nil, along with a plist describing where it goes.
+
+#+begin_src emacs-lisp
+  (defun my-clock-segment ()
+    "Return the current time, or nil to display nothing."
+    (format-time-string "%H:%M"))
+
+  (sleek-modeline-register-segment 'clock
+    :fn 'my-clock-segment
+    :side 'right
+    :priority 5
+    :separator t)
+#+end_src
+
+Registering a segment under a =:name= that already exists replaces it, so you can override a built-in segment by re-registering its name. The mode-line format is built when =sleek-modeline-mode= is enabled; after registering, removing, or reprioritising a segment while the mode is already on, call =M-x sleek-modeline-refresh= to recompute the format in place. Segments that need to install their own hooks through =:on-enable= should be added before enabling the mode.
+
+Supported keys:
+
+| Key          | Description                                                                                   |
+|--------------+-----------------------------------------------------------------------------------------------|
+| =:name=        | Symbol uniquely identifying the segment. Re-using a name replaces the existing segment.       |
+| =:fn=          | Symbol naming the display function. It takes no arguments and returns a string or nil.        |
+| =:side=        | =left= or =right=.                                                                                |
+| =:priority=    | Integer ordering within a side. Lower values sit closer to the outer edge.                   |
+| =:separator=   | =nil= for no suffix, =t= for the standard =sleek-modeline-separator=, or a literal string to append after a non-nil result. |
+| =:condition=   | Optional variable that must be non-nil for the segment to display.                            |
+| =:on-enable=   | Optional function called when =sleek-modeline-mode= activates (e.g. to add hooks).             |
+| =:on-disable=  | Optional function called when =sleek-modeline-mode= deactivates (e.g. to remove them).         |
+
+Built a segment you like? Please [[https://github.com/abidanBrito/sleek-modeline/issues][open an issue]] and send a pull request. See [[#Contributing][Contributing]] first.
 
 * Contributing
 

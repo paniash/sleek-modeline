@@ -190,7 +190,6 @@ is nil."
 The value is read from a hook-driven cache - no work is done on redraw."
   sleek-modeline-diagnostics--cache)
 
-;;;###autoload
 (defun sleek-modeline-diagnostics-enable ()
   "Enable diagnostics segment wiring.
 Attaches to Flycheck/Flymake mode hooks so that diagnostics tracking

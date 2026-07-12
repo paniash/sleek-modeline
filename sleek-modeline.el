@@ -61,11 +61,14 @@ explicitly assigned by `sleek-modeline' segments remain active."
   "Saved `mode-line-inactive' face attributes before sleek-modeline modified them.")
 
 (defvar sleek-modeline--default-mouse-events
-  '([mode-line down-mouse-1]
-    [mode-line mouse-1]
+  '([mode-line mouse-1]
     [mode-line mouse-2]
     [mode-line mouse-3])
-  "Mode-line mouse events whose default global bindings are suppressed.")
+  "Mode-line mouse events whose default global bindings are suppressed.
+Deliberately excludes `down-mouse-1', which is bound to
+`mouse-drag-mode-line' and is what lets the user resize a window by
+dragging its mode-line (the divider between stacked windows).
+Suppressing it would break drag-to-resize.")
 
 (defvar sleek-modeline--saved-mouse-bindings nil
   "Alist of (EVENT . BINDING) saved before suppressing default mouse events.")
@@ -92,7 +95,7 @@ explicitly assigned by `sleek-modeline' segments remain active."
                         (concat result ,suffix)))
                  `(,fn)))
          (form (if cond-var `(when ,cond-var ,core) core)))
-    `(:eval ,form)))
+    `(:eval (unless (sleek-modeline--hide-inactive-p) ,form))))
 
 (defun sleek-modeline--build-format ()
   "Rebuild `sleek-modeline-format' from the segment registry."
@@ -106,11 +109,13 @@ explicitly assigned by `sleek-modeline' segments remain active."
                       by-priority)))
     (setq sleek-modeline-format
           `("%e"
-            (:eval (make-string sleek-modeline-edge-padding ?\s))
+            (:eval (unless (sleek-modeline--hide-inactive-p)
+                     (make-string sleek-modeline-edge-padding ?\s)))
             ,@(mapcar #'sleek-modeline--segment-eval-form left)
             mode-line-format-right-align
             ,@(mapcar #'sleek-modeline--segment-eval-form right)
-            (:eval (make-string sleek-modeline-edge-padding ?\s))))))
+            (:eval (unless (sleek-modeline--hide-inactive-p)
+                     (make-string sleek-modeline-edge-padding ?\s)))))))
 
 (defun sleek-modeline--suppress-default-mouse ()
   "Disable Emacs' default mode-line mouse actions and echo area hints.
@@ -224,6 +229,11 @@ we read `(face-background \='default ...)'."
 	(when sleek-modeline-suppress-default-mouse
 	  (sleek-modeline--suppress-default-mouse))
 
+	;; Hide the mode-line in user-listed major modes
+	(add-hook 'after-change-major-mode-hook
+		  #'sleek-modeline--apply-disabled-mode)
+	(sleek-modeline--refresh-disabled-modes)
+
 	;; Update faces after a theme change
         (add-hook 'after-load-theme-hook #'sleek-modeline--update-faces)
         (advice-add 'load-theme :after #'sleek-modeline--after-theme-change)
@@ -252,6 +262,10 @@ we read `(face-background \='default ...)'."
 
     ;; Restore original format, faces & mouse behaviour
     (setq-default mode-line-format sleek-modeline--default-mode-line)
+
+    (remove-hook 'after-change-major-mode-hook
+                 #'sleek-modeline--apply-disabled-mode)
+    (sleek-modeline--restore-disabled-modes)
 
     (sleek-modeline--restore-default-mouse)
 
@@ -282,6 +296,24 @@ we read `(face-background \='default ...)'."
           (funcall on-disable)))))
 
   (force-mode-line-update t))
+
+;;;###autoload
+(defun sleek-modeline-refresh ()
+  "Rebuild the mode-line from the segment registry.
+Recompute `sleek-modeline-format' and reapply it so that segments
+registered, removed, or reprioritised since `sleek-modeline-mode' was
+enabled take effect without having to toggle the mode off and on.
+
+Note that this only recomputes the format; a segment that installs
+hooks through its `:on-enable' handler must still be wired up by enabling
+the mode.  Does nothing unless `sleek-modeline-mode' is active."
+  (interactive)
+  (if (not sleek-modeline-mode)
+      (when (called-interactively-p 'interactive)
+        (message "sleek-modeline-mode is not enabled"))
+    (sleek-modeline--build-format)
+    (setq-default mode-line-format sleek-modeline-format)
+    (force-mode-line-update t)))
 
 (provide 'sleek-modeline)
 ;;; sleek-modeline.el ends here
