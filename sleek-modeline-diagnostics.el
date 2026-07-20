@@ -18,10 +18,12 @@
 ;; NOTE(abi): these get loaded only if available.
 (eval-when-compile
   (declare-function flycheck-count-errors "flycheck")
+  (declare-function flycheck-list-errors "flycheck")
   (declare-function flymake-diagnostics "flymake")
   (declare-function flymake-diagnostic-type "flymake")
   (declare-function flymake--lookup-type-property "flymake")
   (declare-function flymake--publish-diagnostics "flymake")
+  (declare-function flymake-show-buffer-diagnostics "flymake")
   (declare-function warning-numeric-level "warnings")
   (declare-function nerd-icons-codicon "nerd-icons")
   (defvar flycheck-mode)
@@ -31,6 +33,12 @@
 (defvar sleek-modeline-diagnostics--enabled nil
   "Non-nil means diagnostics integration is enabled globally.
 Used as a sentinel to ensure hooks are only installed once.")
+
+(defvar sleek-modeline-diagnostics--keymap
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mode-line down-mouse-1] #'sleek-modeline-diagnostics-list)
+    map)
+  "Keymap active on the diagnostics segment of `sleek-modeline'.")
 
 (defvar-local sleek-modeline-diagnostics--cache nil
   "Cached propertized string for the diagnostics segment.
@@ -91,15 +99,38 @@ otherwise returns FALLBACK."
       (nerd-icons-codicon nerd-icon)
     fallback))
 
+(defun sleek-modeline-diagnostics-list ()
+  "Show the full list of diagnostics for the clicked buffer.
+Dispatches to the active checker: `flycheck-list-errors' when
+`flycheck-mode' is on, or `flymake-show-buffer-diagnostics' when
+`flymake-mode' is on."
+  (interactive "@")
+  (cond ((bound-and-true-p flycheck-mode)
+         (flycheck-list-errors))
+        ((bound-and-true-p flymake-mode)
+         (flymake-show-buffer-diagnostics))
+        (t (message "No active diagnostics checker"))))
+
+(defun sleek-modeline-diagnostics--make-clickable (str)
+  "Return STR with mouse properties that list diagnostics on click.
+Returns STR unchanged when it is nil."
+  (when str
+    (propertize str
+                'mouse-face 'mode-line-highlight
+                'help-echo (concat (propertize "mouse-1" 'face 'bold)
+                                   ": list all diagnostics")
+                'local-map sleek-modeline-diagnostics--keymap)))
+
 (defun sleek-modeline-diagnostics--format (errors warnings infos)
   "Build a propertized string from ERRORS, WARNINGS and INFOS counts.
 Returns nil when all counts are zero and `sleek-modeline-diagnostics-ok-symbol'
-is nil."
-  (if (and (zerop errors) (zerop warnings) (zerop infos))
-      (when sleek-modeline-diagnostics-ok-symbol
-        (propertize sleek-modeline-diagnostics-ok-symbol
-                    'face 'sleek-modeline-diagnostics-ok-face))
-    (let (parts)
+is nil.  The resulting string is clickable, listing all diagnostics."
+  (sleek-modeline-diagnostics--make-clickable
+   (if (and (zerop errors) (zerop warnings) (zerop infos))
+       (when sleek-modeline-diagnostics-ok-symbol
+         (propertize sleek-modeline-diagnostics-ok-symbol
+                     'face 'sleek-modeline-diagnostics-ok-face))
+     (let (parts)
       (when (and sleek-modeline-diagnostics-show-info (> infos 0))
         (push (propertize (format "%s %d"
                                   (sleek-modeline-diagnostics--icon
@@ -125,7 +156,7 @@ is nil."
                           'face 'sleek-modeline-diagnostics-error-face)
               parts))
       (when parts
-        (string-join parts " ")))))
+        (string-join parts " "))))))
 
 (defun sleek-modeline-diagnostics--flycheck-update ()
   "Recompute the diagnostics cache from the current flycheck state."
