@@ -115,11 +115,17 @@ Dispatches to the active checker: `flycheck-list-errors' when
   "Return STR with mouse properties that list diagnostics on click.
 Returns STR unchanged when it is nil."
   (when str
-    (propertize str
-                'mouse-face 'mode-line-highlight
-                'help-echo (concat (propertize "mouse-1" 'face 'bold)
-                                   ": list all diagnostics")
-                'local-map sleek-modeline-diagnostics--keymap)))
+    ;; NOTE(abi): we pin an explicit foreground on hover so we don't
+    ;;            fall through to the per-icon colors.
+    (let* ((fg (or (face-foreground 'mode-line-buffer-id nil t)
+                   (face-foreground 'mode-line nil t)
+                   (face-foreground 'default nil t)))
+           (highlight-face (list :foreground fg :weight 'bold :underline t)))
+      (propertize str
+                  'mouse-face highlight-face
+                  'help-echo (concat (propertize "mouse-1" 'face 'bold)
+                                     ": list all diagnostics")
+                  'local-map sleek-modeline-diagnostics--keymap))))
 
 (defun sleek-modeline-diagnostics--format (errors warnings infos)
   "Build a propertized string from ERRORS, WARNINGS and INFOS counts.
@@ -131,32 +137,32 @@ is nil.  The resulting string is clickable, listing all diagnostics."
          (propertize sleek-modeline-diagnostics-ok-symbol
                      'face 'sleek-modeline-diagnostics-ok-face))
      (let (parts)
-      (when (and sleek-modeline-diagnostics-show-info (> infos 0))
-        (push (propertize (format "%s %d"
-                                  (sleek-modeline-diagnostics--icon
-                                   "nf-cod-lightbulb"
-                                   sleek-modeline-diagnostics-info-symbol)
-                                  infos)
-                          'face 'sleek-modeline-diagnostics-info-face)
-              parts))
-      (when (> warnings 0)
-        (push (propertize (format "%s %d"
-                                  (sleek-modeline-diagnostics--icon
-                                   "nf-cod-warning"
-                                   sleek-modeline-diagnostics-warning-symbol)
-                                  warnings)
-                          'face 'sleek-modeline-diagnostics-warning-face)
-              parts))
-      (when (> errors 0)
-        (push (propertize (format "%s %d"
-                                  (sleek-modeline-diagnostics--icon
-                                   "nf-cod-error"
-                                   sleek-modeline-diagnostics-error-symbol)
-                                  errors)
-                          'face 'sleek-modeline-diagnostics-error-face)
-              parts))
-      (when parts
-        (string-join parts " "))))))
+       (when (and sleek-modeline-diagnostics-show-info (> infos 0))
+         (push (propertize (format "%s %d"
+                                   (sleek-modeline-diagnostics--icon
+                                    "nf-cod-lightbulb"
+                                    sleek-modeline-diagnostics-info-symbol)
+                                   infos)
+                           'face 'sleek-modeline-diagnostics-info-face)
+               parts))
+       (when (> warnings 0)
+         (push (propertize (format "%s %d"
+                                   (sleek-modeline-diagnostics--icon
+                                    "nf-cod-warning"
+                                    sleek-modeline-diagnostics-warning-symbol)
+                                   warnings)
+                           'face 'sleek-modeline-diagnostics-warning-face)
+               parts))
+       (when (> errors 0)
+         (push (propertize (format "%s %d"
+                                   (sleek-modeline-diagnostics--icon
+                                    "nf-cod-error"
+                                    sleek-modeline-diagnostics-error-symbol)
+                                   errors)
+                           'face 'sleek-modeline-diagnostics-error-face)
+               parts))
+       (when parts
+         (string-join parts " "))))))
 
 (defun sleek-modeline-diagnostics--flycheck-update ()
   "Recompute the diagnostics cache from the current flycheck state."
