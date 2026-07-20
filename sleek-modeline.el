@@ -57,6 +57,9 @@ explicitly assigned by `sleek-modeline' segments remain active."
 (defvar sleek-modeline--saved-modeline-attrs nil
   "Saved `mode-line' face attributes before sleek-modeline modified them.")
 
+(defvar sleek-modeline--saved-modeline-active-attrs nil
+  "Saved `mode-line-active' face attributes before sleek-modeline modified them.")
+
 (defvar sleek-modeline--saved-modeline-inactive-attrs nil
   "Saved `mode-line-inactive' face attributes before sleek-modeline modified them.")
 
@@ -211,11 +214,20 @@ we read `(face-background \='default ...)'."
 	(unless (equal (default-value 'mode-line-format) sleek-modeline-format)
 	  (setq sleek-modeline--default-mode-line
 		(default-value 'mode-line-format))
+
           (setq sleek-modeline--saved-modeline-attrs
 		(list :background (face-attribute 'mode-line :background nil t)
                       :box (face-attribute 'mode-line :box nil t)
                       :underline (face-attribute 'mode-line :underline nil t)
                       :overline (face-attribute 'mode-line :overline nil t)))
+
+          (when (facep 'mode-line-active)
+            (setq sleek-modeline--saved-modeline-active-attrs
+		  (list :background (face-attribute 'mode-line-active :background nil t)
+                        :box (face-attribute 'mode-line-active :box nil t)
+                        :underline (face-attribute 'mode-line-active :underline nil t)
+                        :overline (face-attribute 'mode-line-active :overline nil t))))
+
           (setq sleek-modeline--saved-modeline-inactive-attrs
 		(list :background (face-attribute 'mode-line-inactive :background nil t)
                       :box (face-attribute 'mode-line-inactive :box nil t)
@@ -272,6 +284,10 @@ we read `(face-background \='default ...)'."
     (when sleek-modeline--saved-modeline-attrs
       (apply #'set-face-attribute 'mode-line nil
              sleek-modeline--saved-modeline-attrs))
+
+    (when sleek-modeline--saved-modeline-active-attrs
+      (apply #'set-face-attribute 'mode-line-active nil
+             sleek-modeline--saved-modeline-active-attrs))
 
     (when sleek-modeline--saved-modeline-inactive-attrs
       (apply #'set-face-attribute 'mode-line-inactive nil

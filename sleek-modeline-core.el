@@ -156,6 +156,13 @@ ensuring the modeline is always visually distinct from buffer content."
                           :background modeline-background
                           :box `(:line-width ,modeline-height :color ,modeline-background)
                           :underline nil))
+
+    (when (facep 'mode-line-active)
+      (set-face-attribute 'mode-line-active nil
+                          :background modeline-background
+                          :box `(:line-width ,modeline-height :color ,modeline-background)
+                          :underline nil))
+
     (when (facep 'mode-line-inactive)
       (set-face-attribute 'mode-line-inactive nil
                           :background modeline-inactive-background
