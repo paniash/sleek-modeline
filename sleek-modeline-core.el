@@ -137,7 +137,7 @@ Returns the box line-width value to use for the mode-line."
 (defun sleek-modeline--update-faces ()
   "Update mode-line face attributes based on current height settings.
 When `sleek-modeline-background' is explicitly defined, the value is
-used for the active mode-line. Otherwise the mode-line backgrounds are
+used for the active mode-line.  Otherwise the mode-line backgrounds are
 derived by darkening the current `default' face, ensuring the modeline
 is always visually distinct from buffer content."
   (let* ((modeline-height (sleek-modeline--get-height))
