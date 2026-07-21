@@ -147,7 +147,9 @@ ensuring the modeline is always visually distinct from buffer content."
          (default-background (if (sleek-modeline--valid-color-p raw-background)
                                  raw-background
                                "#000000"))
-         (modeline-background (sleek-modeline--darken default-background 0.30))
+	 (modeline-background (if sleek-modeline-background
+				  default-background
+				(sleek-modeline--darken default-background 0.30)))
          (modeline-inactive-background (if sleek-modeline-hide-inactive
                                            default-background
                                          (sleek-modeline--darken default-background 0.15))))
